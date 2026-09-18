@@ -57,3 +57,103 @@ document.querySelectorAll(".stat b").forEach((el) => statObserver.observe(el));
 
 /* 年份 */
 document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ============ 留言板 ============ */
+const STORE_KEY = "hjy_comments_v1";
+const AVATARS = ["😀", "😎", "🦊", "🐼", "🐧", "🐸", "🌟", "🚀", "🎧", "🍀"];
+const input = document.getElementById("commentInput");
+const submitBtn = document.getElementById("commentSubmit");
+const charCount = document.getElementById("charCount");
+const listEl = document.getElementById("commentList");
+const emptyEl = document.getElementById("commentEmpty");
+
+function loadComments() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; }
+  catch { return []; }
+}
+function saveComments(list) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(list));
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return "刚刚";
+  if (s < 3600) return Math.floor(s / 60) + " 分钟前";
+  if (s < 86400) return Math.floor(s / 3600) + " 小时前";
+  return Math.floor(s / 86400) + " 天前";
+}
+function esc(str) {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function render() {
+  const comments = loadComments()
+    .sort((a, b) => b.ts - a.ts);
+  if (emptyEl) emptyEl.style.display = comments.length ? "none" : "";
+  listEl.querySelectorAll(".comment-item").forEach((el) => el.remove());
+
+  comments.forEach((c) => {
+    const item = document.createElement("div");
+    item.className = "comment-item" + (c.blocked ? " is-blocked" : "");
+
+    const main = c.blocked
+      ? `<p class="comment-text">🚫 该留言已被你屏蔽</p>
+         <p class="blocked-tip">再点一次 👎 可以取消屏蔽</p>`
+      : `<p class="comment-text">${esc(c.text)}</p>`;
+
+    item.innerHTML = `
+      <div class="comment-avatar">${AVATARS[c.av % AVATARS.length]}</div>
+      <div class="comment-main">
+        <div class="comment-meta"><b>${esc(c.name)}</b><time>${timeAgo(c.ts)}</time></div>
+        ${main}
+        <div class="comment-actions">
+          <button class="act like ${c.liked ? "liked" : ""}" aria-label="点赞">👍 <span>${c.likes}</span></button>
+          <button class="act dislike ${c.blocked ? "blocked-on" : ""}" aria-label="屏蔽 / 取消屏蔽">👎</button>
+        </div>
+      </div>`;
+
+    item.querySelector(".like").addEventListener("click", () => {
+      const all = loadComments();
+      const cur = all.find((x) => x.id === c.id);
+      cur.liked = !cur.liked;
+      cur.likes += cur.liked ? 1 : -1;
+      saveComments(all);
+      render();
+    });
+    item.querySelector(".dislike").addEventListener("click", () => {
+      const all = loadComments();
+      const cur = all.find((x) => x.id === c.id);
+      cur.blocked = !cur.blocked;
+      saveComments(all);
+      render();
+    });
+
+    listEl.appendChild(item);
+  });
+}
+
+input.addEventListener("input", () => {
+  charCount.textContent = input.value.length + " / 200";
+});
+
+submitBtn.addEventListener("click", () => {
+  const text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  const all = loadComments();
+  all.push({
+    id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+    name: "访客 #" + (all.length + 1),
+    av: Math.floor(Math.random() * AVATARS.length),
+    text: text.slice(0, 200),
+    ts: Date.now(),
+    likes: 0,
+    liked: false,
+    blocked: false,
+  });
+  saveComments(all);
+  input.value = "";
+  charCount.textContent = "0 / 200";
+  render();
+});
+
+render();

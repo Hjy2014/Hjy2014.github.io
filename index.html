@@ -18,6 +18,7 @@
         <a href="#about">关于</a>
         <a href="#skills">技能</a>
         <a href="#projects">作品</a>
+        <a href="#comments">留言</a>
         <a href="#contact">联系</a>
       </nav>
       <button class="nav-toggle" id="navToggle" aria-label="打开菜单">
@@ -115,8 +116,31 @@
     </div>
   </section>
 
+  <!-- 留言板 -->
+  <section class="section section-alt" id="comments">
+    <div class="container">
+      <h2 class="section-title reveal">留言板</h2>
+      <div class="comments-grid reveal">
+        <!-- 左：写留言 -->
+        <div class="comment-form">
+          <h3>✍️ 写下你的想法</h3>
+          <textarea id="commentInput" maxlength="200"
+            placeholder="可以评价一下我网站吗？或者反馈一下Bug，谢谢。"></textarea>
+          <div class="form-foot">
+            <span class="char-count" id="charCount">0 / 200</span>
+            <button class="btn btn-primary btn-sm" id="commentSubmit">发表留言</button>
+          </div>
+        </div>
+        <!-- 右：评论区 -->
+        <div class="comment-list" id="commentList">
+          <p class="comment-empty" id="commentEmpty">还没有留言，快来抢沙发吧～ 💬</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- 联系 -->
-  <section class="section section-alt" id="contact">
+  <section class="section" id="contact">
     <div class="container contact-inner reveal">
       <h2 class="section-title">联系我</h2>
       <p class="contact-desc">想交流技术、一起做项目，或者只是打个招呼？欢迎随时联系。</p>
