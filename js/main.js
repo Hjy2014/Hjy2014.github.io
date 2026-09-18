@@ -1,5 +1,5 @@
 /* 打字机效果 */
-const roles = ["前端开发工程师", "UI 爱好者", "创意编程玩家"];
+const roles = ["在校学生", "编程爱好者", "创意编程玩家"];
 const typedEl = document.getElementById("typed");
 let roleIndex = 0, charIndex = 0, deleting = false;
 
