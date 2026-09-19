@@ -311,6 +311,10 @@ const plMin = document.getElementById("plMin");
 const plClose = document.getElementById("plClose");
 const playerMini = document.getElementById("playerMini");
 const pfResize = document.getElementById("pfResize");
+const askMask = document.getElementById("askMask");
+const askText = document.getElementById("askText");
+const askOk = document.getElementById("askOk");
+const askCancel = document.getElementById("askCancel");
 
 /* ---- 状态 ---- */
 let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 | hist=历史记录 */
@@ -336,6 +340,7 @@ const chartCache = {};             /* { 榜单playlistId: 原始曲目列表 } *
 /* ---- 播放器状态 ---- */
 const musicAudio = new Audio();
 let queue = [], queueIdx = -1;   /* 当前播放队列与位置 */
+let queueIsDaily = false;        /* 当前队列是否为每日推荐的一批（整批播完自动换下一批） */
 let playSeq = 0;                 /* 播放请求序号，防止快速切换时旧响应覆盖 */
 
 function getFavs() {
@@ -599,8 +604,8 @@ function renderMusic() {
   /* 离开历史视图时退出多选模式 */
   if (musicView !== "hist" && histSelMode) { histSelMode = false; histSel.clear(); }
   histTools.hidden = musicView !== "hist";
-  histSelect.textContent = histSelMode ? "取消选择" : "选择";
-  histSelect.classList.remove("danger");
+  histSelect.textContent = histSelMode ? (histSel.size ? `🗑 清理（${histSel.size}）` : "取消选择") : "选择";
+  histSelect.classList.toggle("danger", histSelMode && histSel.size > 0);
   musicGrid.classList.toggle("selecting", musicView === "hist" && histSelMode);
 
   dailyRefresh.hidden = musicView !== "home";
@@ -677,8 +682,10 @@ async function fetchChart(pid) {
 
 async function loadDaily(offset) {
   dailyOffset = offset;
-  musicStatus.textContent = `正在获取网易云${dailyChart.name}…`;
-  musicGrid.innerHTML = "";
+  if (musicView === "home") { /* 自动连播时用户可能切到别的页面，别污染那边的状态栏 */
+    musicStatus.textContent = `正在获取网易云${dailyChart.name}…`;
+    musicGrid.innerHTML = "";
+  }
   try {
     const chart = await fetchChart(dailyChart.id);
     dailyChartLen = chart.length;
@@ -697,8 +704,14 @@ async function loadDaily(offset) {
         localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 4, day: dayKey(), off: offset, list: dailyList }));
       } catch (e) { /* 忽略存储失败 */ }
     }
+    return true;
   } catch (e) {
-    musicStatus.textContent = "推荐获取失败，点「换一批」再试试～";
+    /* 失败时恢复旧列表显示（否则网格空白），并提示 */
+    if (musicView === "home") {
+      renderMusic();
+      musicStatus.textContent = "推荐获取失败，点「换一批」再试试～";
+    }
+    return false;
   }
 }
 
@@ -880,6 +893,7 @@ function refreshPlaying() {
 async function playTrack(list, idx) {
   if (!list.length) return;
   queue = list;
+  queueIsDaily = (list === dailyList); /* 每日推荐的队列：整批播完后自动换下一批 */
   queueIdx = (idx + list.length) % list.length;
   const seq = ++playSeq;
   const t = queue[queueIdx];
@@ -913,8 +927,38 @@ async function playTrack(list, idx) {
   refreshPlaying();
 }
 
-function playNext() { if (queue.length) playTrack(queue, queueIdx + 1); }
+function playNext() {
+  if (!queue.length) return;
+  if (queueIdx + 1 < queue.length) { playTrack(queue, queueIdx + 1); return; }
+  /* 整批播完 */
+  if (queueIsDaily) { playNextDailyBatch(); return; } /* 每日推荐：自动换下一页继续播 */
+  playTrack(queue, 0); /* 其他列表：循环回第一首 */
+}
 function playPrev() { if (queue.length) playTrack(queue, queueIdx - 1); }
+
+/* 每日推荐：一批播完自动换下一批；若下一批过滤后没有能播的歌，最多连续跳 4 批 */
+let dailyAutoTries = 0;
+async function playNextDailyBatch() {
+  if (dailyAutoTries >= 4) {
+    dailyAutoTries = 0;
+    if (musicView === "home") musicStatus.textContent = "后面几批暂时没有能播的歌，点「换一批」试试吧～";
+    return;
+  }
+  const nextOff = (dailyOffset + PAGE_SIZE) % (Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE);
+  if (musicView === "home") musicStatus.textContent = "本批播完，自动换下一批…";
+  const ok = await loadDaily(nextOff);
+  if (!ok) { /* 网络失败：连播暂停，提示手动继续 */
+    if (musicView === "home") musicStatus.textContent = "网络开小差了，连播暂停，点「换一批」继续～";
+    return;
+  }
+  if (dailyList.length) {
+    dailyAutoTries = 0;
+    playTrack(dailyList, 0);
+  } else {
+    dailyAutoTries++;
+    playNextDailyBatch();
+  }
+}
 
 /* 最小化：悬浮窗真正隐藏，变成贴屏幕最左侧的小球，音乐继续播放 */
 let playerMinimized = false;
@@ -1021,6 +1065,18 @@ favTab.addEventListener("click", async () => {
   }
 });
 
+/* ---- 通用确认弹窗（替代浏览器原生 confirm，样式与站点统一，有「确定」「取消」两个按钮） ---- */
+let askCb = null;
+function askConfirm(text, onOk) {
+  askText.textContent = text;
+  askCb = onOk || null;
+  askMask.hidden = false;
+}
+function closeAsk() { askMask.hidden = true; askCb = null; }
+askOk.addEventListener("click", () => { const cb = askCb; closeAsk(); if (cb) cb(); });
+askCancel.addEventListener("click", closeAsk);
+askMask.addEventListener("click", (e) => { if (e.target === askMask) closeAsk(); }); /* 点遮罩=取消 */
+
 /* ---- 历史记录：进入/退出、多选删除、清空 ---- */
 histTab.addEventListener("click", () => {
   if (musicView === "hist") {
@@ -1039,21 +1095,29 @@ histSelect.addEventListener("click", () => {
     renderMusic();
     return;
   }
-  if (histSel.size) {            /* 删除选中的歌曲 */
-    setHist(getHist().filter((t) => !histSel.has(t.id)));
+  if (histSel.size) {            /* 清理选中的歌曲：先弹确认（确定/取消） */
+    const ids = [...histSel];
+    askConfirm(`是否清理所选的 ${ids.length} 首歌曲？`, () => {
+      setHist(getHist().filter((t) => !ids.includes(t.id)));
+      histSelMode = false;
+      histSel.clear();
+      renderMusic();
+    });
+    return;
   }
-  histSelMode = false;
+  histSelMode = false;           /* 没有选中 → 退出多选模式 */
   histSel.clear();
   renderMusic();
 });
 
 histClear.addEventListener("click", () => {
   if (!getHist().length) return;
-  if (!confirm("确定清空全部播放历史吗？")) return;
-  setHist([]);
-  histSelMode = false;
-  histSel.clear();
-  renderMusic();
+  askConfirm("是否清空历史记录？", () => {
+    setHist([]);
+    histSelMode = false;
+    histSel.clear();
+    renderMusic();
+  });
 });
 
 /* ---- 搜索控件 ---- */
@@ -1077,7 +1141,7 @@ musicGrid.addEventListener("click", (e) => {
     const sid = Number(selCard.dataset.id);
     if (histSel.has(sid)) { histSel.delete(sid); selCard.classList.remove("hist-sel"); }
     else { histSel.add(sid); selCard.classList.add("hist-sel"); }
-    histSelect.textContent = histSel.size ? `🗑 删除（${histSel.size}）` : "取消选择";
+    histSelect.textContent = histSel.size ? `🗑 清理（${histSel.size}）` : "取消选择";
     histSelect.classList.toggle("danger", histSel.size > 0);
     return;
   }
