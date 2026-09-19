@@ -493,7 +493,7 @@ function savePlayerScale() {
 }
 
 function showPlayer(t) {
-  playerBar.hidden = false;
+  if (!playerMinimized) playerBar.hidden = false; /* 最小化时不弹回窗口 */
   if (t.art) {
     plArt.dataset.fb = ""; /* 新歌重新允许兜底重试 */
     plArt.style.visibility = "visible";
@@ -626,12 +626,15 @@ async function playTrack(list, idx) {
 function playNext() { if (queue.length) playTrack(queue, queueIdx + 1); }
 function playPrev() { if (queue.length) playTrack(queue, queueIdx - 1); }
 
-/* 最小化：收起悬浮窗，变成贴屏幕最左侧的小球，音乐继续播放 */
+/* 最小化：悬浮窗真正隐藏，变成贴屏幕最左侧的小球，音乐继续播放 */
+let playerMinimized = false;
 function minimizePlayer() {
+  playerMinimized = true;
   playerBar.hidden = true;
   playerMini.hidden = false;
 }
 playerMini.addEventListener("click", () => {
+  playerMinimized = false;
   playerMini.hidden = true;
   playerBar.hidden = false;
 });
