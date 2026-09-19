@@ -106,8 +106,20 @@ function getLoginUser() {
 
 function renderUser() {
   const u = getLoginUser();
+  const oldStorageLink = document.getElementById("storageLink");
+  if (oldStorageLink) oldStorageLink.remove();
   if (u) {
     const isOwner = u === OWNER.user;
+    if (isOwner) {
+      /* 站长：导航栏插入「存储」入口 */
+      const navLinks = document.querySelector(".nav-right .nav-links");
+      if (navLinks) {
+        const a = document.createElement("a");
+        a.href = "#"; a.id = "storageLink"; a.textContent = "存储";
+        a.addEventListener("click", (e) => { e.preventDefault(); openStorageModal(); });
+        navLinks.appendChild(a);
+      }
+    }
     userArea.innerHTML = `
       <div class="user-chip logged-in" id="userChip">
         <span class="uname">${u}${isOwner ? ' <em class="owner-badge">站长</em>' : ""}</span>
@@ -211,6 +223,45 @@ function openContactModal() {
   const close = () => mask.remove();
   mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
   mask.querySelector("#contactClose").addEventListener("click", close);
+}
+
+/* ============ 站长存储面板 ============ */
+const STORAGE_KEY = "hjy_storage_v1";
+
+function openStorageModal() {
+  if (document.getElementById("storageModal")) return;
+  const saved = localStorage.getItem(STORAGE_KEY) || "";
+  const mask = document.createElement("div");
+  mask.id = "storageModal";
+  mask.innerHTML = `
+    <div class="storage-card">
+      <button class="login-close" id="storageClose" aria-label="关闭">✕</button>
+      <h3>🗂 我的存储</h3>
+      <p class="storage-note">存放文字、代码片段、待办…（仅保存在当前浏览器）</p>
+      <textarea id="storageText" maxlength="5000"
+        placeholder="在这里输入要存储的内容…"></textarea>
+      <div class="storage-foot">
+        <span class="char-count" id="storageCount"></span>
+        <span class="storage-status" id="storageStatus"></span>
+        <button class="login-go" id="storageSave">保 存</button>
+      </div>
+    </div>`;
+  document.body.appendChild(mask);
+  const close = () => mask.remove();
+  mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+  mask.querySelector("#storageClose").addEventListener("click", close);
+
+  const text = mask.querySelector("#storageText");
+  const count = mask.querySelector("#storageCount");
+  const status = mask.querySelector("#storageStatus");
+  const refresh = () => { count.textContent = `${text.value.length} / 5000`; };
+  text.value = saved;
+  refresh();
+  text.addEventListener("input", () => { refresh(); status.textContent = ""; });
+  mask.querySelector("#storageSave").addEventListener("click", () => {
+    localStorage.setItem(STORAGE_KEY, text.value);
+    status.textContent = "已保存 ✓";
+  });
 }
 
 /* ============ 浏览设备数统计 ============ */
