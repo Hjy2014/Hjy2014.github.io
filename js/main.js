@@ -63,7 +63,7 @@ function smoothScrollTo(target) {
   const targetTop = Math.max(target.getBoundingClientRect().top + startY - NAV_OFFSET, 0);
   const dist = Math.abs(targetTop - startY);
   if (dist < 1) return;
-  const duration = Math.min(Math.max(dist / 2.5, 450), 1000);
+  const duration = Math.min(Math.max(dist / 4, 300), 650);
   const start = performance.now();
   let cancelled = false;
   const cancel = () => { cancelled = true; };
