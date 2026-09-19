@@ -212,3 +212,30 @@ function openContactModal() {
   mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
   mask.querySelector("#contactClose").addEventListener("click", close);
 }
+
+/* ============ 浏览设备数统计 ============ */
+/* Abacus 公共计数器：/hit 加一并返回总数，/get 只读。
+   每台设备用 localStorage 标记，只统计一次 → 即「不同设备数」 */
+const VISIT_KEY = "hjy_visited";
+const COUNTER_BASE = "https://abacus.jasoncameron.dev";
+const COUNTER_NS = "hjy2014io";
+const COUNTER_KEY = "visitors";
+
+(async function renderVisitCount() {
+  const el = document.getElementById("visitCount");
+  if (!el) return;
+  const isNewDevice = !localStorage.getItem(VISIT_KEY);
+  try {
+    const action = isNewDevice ? "hit" : "get";
+    const res = await fetch(`${COUNTER_BASE}/${action}/${COUNTER_NS}/${COUNTER_KEY}`);
+    const data = await res.json();
+    if (typeof data.value === "number") {
+      el.innerHTML = `👀 本站已被 <b>${data.value}</b> 台不同设备浏览过`;
+      localStorage.setItem(VISIT_KEY, "1");
+    } else {
+      el.remove();
+    }
+  } catch (e) {
+    el.remove(); /* 计数服务不可用时静默隐藏 */
+  }
+})();
