@@ -230,7 +230,7 @@ const COUNTER_KEY = "visitors";
     const res = await fetch(`${COUNTER_BASE}/${action}/${COUNTER_NS}/${COUNTER_KEY}`);
     const data = await res.json();
     if (typeof data.value === "number") {
-      el.innerHTML = `👀 本站已被 <b>${data.value}</b> 台不同设备浏览过（手机 / 电脑 / 平板都算哦）`;
+      el.innerHTML = `👀 本站已被 <b>${data.value}</b> 台不同设备浏览过`;
       localStorage.setItem(VISIT_KEY, "1");
     } else {
       el.remove();
