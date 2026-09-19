@@ -57,3 +57,83 @@ document.querySelectorAll(".stat b").forEach((el) => statObserver.observe(el));
 
 /* 年份 */
 document.getElementById("year").textContent = new Date().getFullYear();
+
+/* ============ 登录系统（前端演示版） ============ */
+const USER_KEY = "hjy_login_user";
+const OWNER = { user: "hjy2014", pass: "hjy2026" }; // 管理员账号（注意：静态页面密码对看源码者可见）
+const userArea = document.getElementById("userArea");
+
+function getLoginUser() {
+  return localStorage.getItem(USER_KEY) || "";
+}
+
+function renderUser() {
+  const u = getLoginUser();
+  if (u) {
+    const isOwner = u === OWNER.user;
+    userArea.innerHTML = `
+      <div class="user-chip logged-in" id="userChip">
+        <span class="uname">${u}${isOwner ? ' <em class="owner-badge">站长</em>' : ""}</span>
+        <span class="avatar logged" aria-label="用户头像">👤</span>
+      </div>
+      <div class="user-menu" id="userMenu">
+        ${isOwner ? '<a class="menu-admin" href="https://github.com/Hjy2014/Hjy2014.github.io" target="_blank" rel="noopener">🛠 管理网页</a>' : ""}
+        <button class="menu-logout" id="logoutBtn">退出登录</button>
+      </div>`;
+    const chip = document.getElementById("userChip");
+    const menu = document.getElementById("userMenu");
+    chip.addEventListener("click", (e) => { e.stopPropagation(); menu.classList.toggle("open"); });
+    document.addEventListener("click", () => menu.classList.remove("open"));
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      localStorage.removeItem(USER_KEY);
+      renderUser();
+    });
+  } else {
+    userArea.innerHTML = `
+      <button class="user-chip logged-out" id="loginOpen">
+        <span class="uname">未登录</span>
+        <span class="avatar blank" aria-label="未登录"></span>
+      </button>`;
+    document.getElementById("loginOpen").addEventListener("click", openLoginModal);
+  }
+}
+
+function openLoginModal() {
+  if (document.getElementById("loginModal")) return;
+  const mask = document.createElement("div");
+  mask.id = "loginModal";
+  mask.innerHTML = `
+    <div class="login-card">
+      <button class="login-close" id="loginClose" aria-label="关闭">✕</button>
+      <h3>登录</h3>
+      <label>用户名
+        <input type="text" id="loginUser" autocomplete="username" placeholder="请输入用户名" />
+      </label>
+      <label>密码
+        <input type="password" id="loginPass" autocomplete="current-password" placeholder="请输入密码" />
+      </label>
+      <p class="login-err" id="loginErr"></p>
+      <button class="login-go" id="loginGo">登 录</button>
+    </div>`;
+  document.body.appendChild(mask);
+  const close = () => mask.remove();
+  mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+  mask.querySelector("#loginClose").addEventListener("click", close);
+  const submit = () => {
+    const u = mask.querySelector("#loginUser").value.trim();
+    const p = mask.querySelector("#loginPass").value;
+    const err = mask.querySelector("#loginErr");
+    if (!u || !p) { err.textContent = "用户名和密码不能为空"; return; }
+    if (u === OWNER.user && p !== OWNER.pass) { err.textContent = "用户名或密码错误"; return; }
+    localStorage.setItem(USER_KEY, u);
+    close();
+    renderUser();
+  };
+  mask.querySelector("#loginGo").addEventListener("click", submit);
+  mask.querySelectorAll("input").forEach((el) =>
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); })
+  );
+  mask.querySelector("#loginUser").focus();
+}
+
+renderUser();
