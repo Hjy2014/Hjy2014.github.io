@@ -125,17 +125,16 @@
     <div class="container">
       <h2 class="section-title reveal">音乐</h2>
       <div class="music-wrap reveal">
-        <div class="music-tabs">
-          <button class="music-tab active" data-tab="daily">✨ 每日推荐</button>
-          <button class="music-tab" data-tab="search">🔍 搜索</button>
-          <button class="music-tab" data-tab="fav">❤️ 我的收藏<span id="favCount"></span></button>
-        </div>
-        <div class="music-searchbar" id="searchBar" hidden>
-          <input id="musicInput" type="text" placeholder="输入歌曲、歌手或专辑名，回车搜索…" />
+        <div class="music-searchbar">
+          <input id="musicInput" type="text" placeholder="搜索歌曲、歌手或专辑…" />
           <button class="btn btn-primary music-search-btn" id="musicSearchBtn">搜索</button>
+          <button class="music-favtab" id="favTab">❤️ 我的收藏<span id="favCount"></span></button>
         </div>
-        <p class="music-hint" id="musicHint"></p>
-        <button class="music-refresh" id="dailyRefresh" hidden>🔄 换一批</button>
+        <p class="music-hint">🎵 完整版播放（数据来自网易云音乐）· 点 🤍 收藏喜欢的歌 · 个别歌曲因版权可能无法播放</p>
+        <div class="music-caption">
+          <span id="musicCaption">✨ 今日推荐</span>
+          <button class="music-refresh" id="dailyRefresh">🔄 换一批</button>
+        </div>
         <div class="music-status" id="musicStatus"></div>
         <div class="music-grid" id="musicGrid"></div>
         <div class="music-pager" id="musicPager" hidden>
@@ -194,25 +193,27 @@
     <p>© <span id="year"></span> 胡建宇 · 用 ❤️ 与好奇心 构建 · 托管于 GitHub Pages</p>
   </footer>
 
-  <!-- 底部播放条（类似音乐软件） -->
-  <div class="player-bar" id="playerBar" hidden>
-    <img class="pl-art" id="plArt" alt="正在播放" />
-    <div class="pl-info">
-      <p class="pl-name" id="plName"></p>
-      <p class="pl-artist" id="plArtist"></p>
-    </div>
-    <div class="pl-controls">
-      <button class="pl-btn" id="plPrev" aria-label="上一首">⏮</button>
-      <button class="pl-btn pl-toggle" id="plToggle" aria-label="播放/暂停">▶</button>
-      <button class="pl-btn" id="plNext" aria-label="下一首">⏭</button>
+  <!-- 悬浮播放窗（可拖动） -->
+  <div class="player-float" id="playerBar" hidden>
+    <div class="pf-head">
+      <img class="pf-art" id="plArt" alt="" />
+      <div class="pl-info">
+        <p class="pl-name" id="plName"></p>
+        <p class="pl-artist" id="plArtist"></p>
+      </div>
+      <button class="pl-close" id="plClose" aria-label="关闭播放器">✕</button>
     </div>
     <div class="pl-progress">
       <span class="pl-time" id="plCur">0:00</span>
       <input type="range" id="plSeek" min="0" max="1000" value="0" aria-label="播放进度" />
       <span class="pl-time" id="plDur">0:00</span>
     </div>
-    <button class="pl-fav" id="plFav" aria-label="收藏">🤍</button>
-    <button class="pl-close" id="plClose" aria-label="关闭播放器">✕</button>
+    <div class="pf-controls">
+      <button class="pl-btn" id="plPrev" aria-label="上一首">⏮</button>
+      <button class="pl-btn pl-toggle" id="plToggle" aria-label="播放/暂停">▶</button>
+      <button class="pl-btn" id="plNext" aria-label="下一首">⏭</button>
+      <button class="pl-fav" id="plFav" aria-label="收藏">🤍</button>
+    </div>
   </div>
 
   <script src="js/main.js"></script>
