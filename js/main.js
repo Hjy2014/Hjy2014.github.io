@@ -286,6 +286,10 @@ const musicInput = document.getElementById("musicInput");
 const musicSearchBtn = document.getElementById("musicSearchBtn");
 const favCountEl = document.getElementById("favCount");
 const favTab = document.getElementById("favTab");
+const histTab = document.getElementById("histTab");
+const histTools = document.getElementById("histTools");
+const histSelect = document.getElementById("histSelect");
+const histClear = document.getElementById("histClear");
 const musicPager = document.getElementById("musicPager");
 const pagePrev = document.getElementById("pagePrev");
 const pageNext = document.getElementById("pageNext");
@@ -309,8 +313,10 @@ const playerMini = document.getElementById("playerMini");
 const pfResize = document.getElementById("pfResize");
 
 /* ---- 状态 ---- */
-let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 */
-let lastView = "home";           /* 从收藏页返回时用 */
+let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 | hist=历史记录 */
+let lastView = "home";           /* 从收藏/历史页返回时用 */
+let histSelMode = false;         /* 历史记录：是否处于多选模式 */
+const histSel = new Set();       /* 多选模式下选中的歌曲 id */
 let favPlayable = [];            /* 收藏里检查过可播放的 */
 let favChecked = false;          /* 收藏可播性是否已检查过 */
 const searchCache = {};          /* { 关键词: { 页码: 歌曲列表 } } */
@@ -338,6 +344,22 @@ function getFavs() {
 }
 function setFavs(list) { localStorage.setItem(MUSIC_FAV_KEY, JSON.stringify(list)); }
 function isFav(id) { return getFavs().some((t) => t.id === id); }
+
+/* ---- 播放历史（本地，最近 100 首） ---- */
+const PLAY_HIST_KEY = "hjy_play_history_v1";
+function getHist() {
+  try { return JSON.parse(localStorage.getItem(PLAY_HIST_KEY)) || []; }
+  catch (e) { return []; }
+}
+function setHist(list) {
+  try { localStorage.setItem(PLAY_HIST_KEY, JSON.stringify(list.slice(0, 100))); }
+  catch (e) { /* 存储失败不影响播放 */ }
+}
+function pushHist(t) {
+  const h = getHist().filter((x) => x.id !== t.id);
+  h.unshift({ id: t.id, name: t.name, artist: t.artist, album: t.album || "", art: t.art || "", t: Date.now() });
+  setHist(h);
+}
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
@@ -558,6 +580,7 @@ function trackCard(t) {
 
 function currentList() {
   if (musicView === "fav") return favChecked ? favPlayable : getFavs();
+  if (musicView === "hist") return getHist();
   if (musicView === "home") return dailyList;
   const entry = searchCache[searchKw] && searchCache[searchKw][searchPage];
   return (entry && entry.list) || [];
@@ -570,6 +593,15 @@ function renderMusic() {
   favTab.innerHTML = musicView === "fav"
     ? "← 返回"
     : `❤️ 我的收藏<span id="favCount">${favs.length ? `（${favs.length}）` : ""}</span>`;
+  histTab.classList.toggle("active", musicView === "hist");
+  histTab.textContent = musicView === "hist" ? "← 返回" : "🕐 历史";
+
+  /* 离开历史视图时退出多选模式 */
+  if (musicView !== "hist" && histSelMode) { histSelMode = false; histSel.clear(); }
+  histTools.hidden = musicView !== "hist";
+  histSelect.textContent = histSelMode ? "取消选择" : "选择";
+  histSelect.classList.remove("danger");
+  musicGrid.classList.toggle("selecting", musicView === "hist" && histSelMode);
 
   dailyRefresh.hidden = musicView !== "home";
   musicPager.hidden = musicView !== "search";
@@ -581,6 +613,8 @@ function renderMusic() {
     pagePrev.disabled = searchPage <= 1;
     pageNext.disabled = !(entry && entry.more); /* 服务端还有下一页才可点 */
     pageInfo.textContent = `第 ${searchPage} 页`;
+  } else if (musicView === "hist") {
+    musicCaption.textContent = "🕐 历史记录";
   } else {
     musicCaption.textContent = "❤️ 我的收藏";
   }
@@ -591,9 +625,17 @@ function renderMusic() {
     musicStatus.textContent = (favChecked && total)
       ? "收藏里的无版权歌曲已自动隐藏～"
       : "还没有收藏，搜索一首喜欢的歌吧～";
+  } else if (musicView === "hist" && !list.length) {
+    musicStatus.textContent = "还没有播放记录，去听首歌吧～";
   } else if (musicView === "home" && !list.length) musicStatus.textContent = "今日推荐生成中…";
   else musicStatus.textContent = "";
   musicGrid.innerHTML = list.map(trackCard).join("");
+  /* 多选模式下恢复选中标记 */
+  if (musicView === "hist" && histSelMode) {
+    musicGrid.querySelectorAll(".music-card").forEach((card) => {
+      if (histSel.has(Number(card.dataset.id))) card.classList.add("hist-sel");
+    });
+  }
 }
 
 /* ---- 每日推荐：网易云爆火榜单 ---- */
@@ -860,6 +902,8 @@ async function playTrack(list, idx) {
     musicAudio.src = url;
     plArtist.textContent = t.artist;
     await musicAudio.play();
+    pushHist(t);                       /* 记入播放历史（真实开播才算） */
+    if (musicView === "hist") renderMusic(); /* 历史页开着时同步刷新排序 */
   } catch (e) {
     if (seq !== playSeq) return;
     plArtist.textContent = e.message === "no url"
@@ -977,6 +1021,41 @@ favTab.addEventListener("click", async () => {
   }
 });
 
+/* ---- 历史记录：进入/退出、多选删除、清空 ---- */
+histTab.addEventListener("click", () => {
+  if (musicView === "hist") {
+    musicView = lastView || "home";
+  } else {
+    lastView = musicView;
+    musicView = "hist";
+  }
+  renderMusic();
+});
+
+histSelect.addEventListener("click", () => {
+  if (!histSelMode) {            /* 进入多选模式 */
+    histSelMode = true;
+    histSel.clear();
+    renderMusic();
+    return;
+  }
+  if (histSel.size) {            /* 删除选中的歌曲 */
+    setHist(getHist().filter((t) => !histSel.has(t.id)));
+  }
+  histSelMode = false;
+  histSel.clear();
+  renderMusic();
+});
+
+histClear.addEventListener("click", () => {
+  if (!getHist().length) return;
+  if (!confirm("确定清空全部播放历史吗？")) return;
+  setHist([]);
+  histSelMode = false;
+  histSel.clear();
+  renderMusic();
+});
+
 /* ---- 搜索控件 ---- */
 musicSearchBtn.addEventListener("click", searchMusic);
 musicInput.addEventListener("keydown", (e) => { if (e.key === "Enter") searchMusic(); });
@@ -991,6 +1070,17 @@ dailyRefresh.addEventListener("click", () => {
 
 /* ---- 卡片按钮：播放 / 收藏（事件委托） ---- */
 musicGrid.addEventListener("click", (e) => {
+  /* 历史记录多选模式：点卡片本身切换选中态 */
+  if (musicView === "hist" && histSelMode) {
+    const selCard = e.target.closest(".music-card");
+    if (!selCard) return;
+    const sid = Number(selCard.dataset.id);
+    if (histSel.has(sid)) { histSel.delete(sid); selCard.classList.remove("hist-sel"); }
+    else { histSel.add(sid); selCard.classList.add("hist-sel"); }
+    histSelect.textContent = histSel.size ? `🗑 删除（${histSel.size}）` : "取消选择";
+    histSelect.classList.toggle("danger", histSel.size > 0);
+    return;
+  }
   const btn = e.target.closest("[data-act]");
   if (!btn) return;
   const card = btn.closest(".music-card");
