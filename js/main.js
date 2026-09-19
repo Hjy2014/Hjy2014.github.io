@@ -310,6 +310,8 @@ const plDur = document.getElementById("plDur");
 const plFav = document.getElementById("plFav");
 const plMin = document.getElementById("plMin");
 const plClose = document.getElementById("plClose");
+const plMax = document.getElementById("plMax");
+const plLyric = document.getElementById("plLyric");
 const playerMini = document.getElementById("playerMini");
 const pfResize = document.getElementById("pfResize");
 const askMask = document.getElementById("askMask");
@@ -846,6 +848,8 @@ function showPlayer(t) {
     applyPlayerScale();
     placePlayer();
   }
+  /* 预加载歌词（悬浮窗歌词行 + 详情页共用，有缓存不重复请求） */
+  if (npLrcCache[t.id] === undefined && npLrcLoadingId !== t.id) loadLyricsInto(t.id);
   /* 详情页开着时切歌：同步封面/歌名/歌词 */
   if (!npMask.hidden && npArt.dataset.tid !== String(t.id)) { npLines = []; npFillTrack(t); }
 }
@@ -895,20 +899,9 @@ playerBar.addEventListener("pointermove", (e) => {
   playerBar.style.top = (e.clientY - dragState.dy) + "px";
   clampPlayer();
 });
-/* 双击（快速两次轻点、位移很小）悬浮窗空白处 → 打开播放详情页 */
-let lastTapT = 0, lastTapXY = null;
-function endDrag(e) {
+function endDrag() {
   if (!dragState) return;
   dragState = null;
-  const now = Date.now();
-  const near = lastTapXY && e &&
-    Math.abs(e.clientX - lastTapXY.x) < 26 && Math.abs(e.clientY - lastTapXY.y) < 26;
-  if (now - lastTapT < 420 && near) {
-    lastTapT = 0; lastTapXY = null;
-    if (!npMask.hidden) closeNowPlaying(); else openNowPlaying();
-  } else {
-    lastTapT = now; lastTapXY = e ? { x: e.clientX, y: e.clientY } : null;
-  }
   localStorage.setItem(PLAYER_POS_KEY, JSON.stringify({
     x: parseInt(playerBar.style.left, 10),
     y: parseInt(playerBar.style.top, 10),
@@ -1097,7 +1090,8 @@ musicAudio.addEventListener("loadedmetadata", () => {
 musicAudio.addEventListener("timeupdate", () => {
   plCur.textContent = fmt(musicAudio.currentTime);
   plSeek.value = Math.floor(musicAudio.currentTime);
-  if (!npMask.hidden) { npSyncTime(); npFollowLyric(); } /* 详情页开着：同步进度与歌词高亮 */
+  npFollowLyric();                              /* 悬浮窗歌词行 + 详情页高亮跟随 */
+  if (!npMask.hidden) npSyncTime();             /* 详情页开着：同步进度条与时间 */
 });
 plSeek.addEventListener("input", () => {
   if (isFinite(musicAudio.duration)) musicAudio.currentTime = +plSeek.value;
@@ -1159,16 +1153,20 @@ function renderLyrics(lines) {
   npLyrics.scrollTop = 0;
 }
 
+let npLrcLoadingId = null; /* 正在拉取歌词的歌曲 id，防止重复请求 */
 async function loadLyricsInto(id) {
-  const seq = ++npLrcReq;
-  npLines = []; npLrcIdx = -1;
-  npLyrics.innerHTML = '<p class="np-hint">歌词加载中…</p>';
   if (npLrcCache[id] !== undefined) {          /* 取过（含确认无歌词），直接用 */
     npLines = npLrcCache[id] || [];
     renderLyrics(npLines);
     npFollowLyric();
     return;
   }
+  if (npLrcLoadingId === id) return;           /* 同一首已在拉取中 */
+  npLrcLoadingId = id;
+  const seq = ++npLrcReq;
+  npLines = []; npLrcIdx = -1;
+  plLyric.textContent = "";                    /* 悬浮窗歌词行先清空 */
+  npLyrics.innerHTML = '<p class="np-hint">歌词加载中…</p>';
   try {
     const lines = await fetchLyrics(id);
     if (seq !== npLrcReq) return;              /* 已切到别的歌 */
@@ -1181,17 +1179,22 @@ async function loadLyricsInto(id) {
     npLrcCache[id] = null;
     npLines = [];
     npLyrics.innerHTML = '<p class="np-hint">暂时拿不到这首歌词～</p>';
+  } finally {
+    if (npLrcLoadingId === id) npLrcLoadingId = null;
   }
 }
 
-/* 高亮当前句并滚动到歌词区中间（用户手动滚动后 3 秒内不抢滚动条） */
+/* 高亮当前句；同时把当前句同步到悬浮窗歌词行（plLyric）。
+   详情页开着时滚动到中间（用户手动滚动后 3 秒内不抢滚动条） */
 function npFollowLyric() {
-  if (npMask.hidden || !npLines.length) return;
   const t = musicAudio.currentTime || 0;
   let idx = -1;
   for (let i = 0; i < npLines.length; i++) { if (npLines[i].t <= t + 0.25) idx = i; else break; }
   if (idx === npLrcIdx) return;
   npLrcIdx = idx;
+  const text = idx >= 0 ? npLines[idx].text : "";
+  if (plLyric.textContent !== text) plLyric.textContent = text; /* 悬浮窗的一行歌词 */
+  if (npMask.hidden) return;
   const ps = npLyrics.querySelectorAll("p[data-i]");
   ps.forEach((p) => p.classList.toggle("on", +p.dataset.i === idx));
   if (idx >= 0 && ps[idx] && Date.now() - npUserScroll > 3000) {
@@ -1221,6 +1224,7 @@ function openNowPlaying() {
 function closeNowPlaying() { npMask.hidden = true; npVolPop.hidden = true; }
 
 npClose.addEventListener("click", closeNowPlaying);
+plMax.addEventListener("click", openNowPlaying); /* 悬浮窗 □ 最大化键 → 播放详情页 */
 npPrev.addEventListener("click", playPrev);
 npNext.addEventListener("click", playNext);
 npToggle.addEventListener("click", () => {
