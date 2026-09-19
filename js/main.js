@@ -415,30 +415,79 @@ function artOf(al) {
     + (u && !u.includes("?") ? "?param=240y240" : "");
 }
 
+/* 备用搜索通道：GDStudio（CORS 直连，不走公共代理），代理全挂时顶上 */
+async function searchViaGd(term, offset) {
+  const page = Math.floor(offset / PAGE_SIZE) + 1;
+  const r = await fetchTimeout(
+    "https://music-api.gdstudio.xyz/api.php?types=search&source=netease&name=" + encodeURIComponent(term) +
+    "&count=" + PAGE_SIZE + "&pages=" + page, 9000);
+  if (!r.ok) throw new Error("gd " + r.status);
+  const arr = await r.json();
+  return (Array.isArray(arr) ? arr : []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    artist: [].concat(s.artist || []).join(" / "),
+    album: s.album || "",
+    art: String(s.pic || s.picUrl || "").replace("http://", "https://"),
+  }));
+}
+
 /* 搜索一页：cloudsearch 接口自带封面地址。
    onRaw 回调：搜索结果一到就先画出来（不等版权检查），过滤完再更新 */
 async function fetchTracks(term, offset, onRaw) {
-  const data = await neteaseGet(
-    "/cloudsearch/pc?s=" + encodeURIComponent(term) +
-    "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
-  );
-  const raw = ((data.result && data.result.songs) || []).map((s) => ({
-    id: s.id,
-    name: s.name,
-    artist: (s.ar || s.artists || []).map((a) => a.name).join(" / "),
-    album: (s.al && s.al.name) || (s.album && s.album.name) || "",
-    art: artOf(s.al || s.album),
-  }));
+  let raw;
+  try {
+    const data = await neteaseGet(
+      "/cloudsearch/pc?s=" + encodeURIComponent(term) +
+      "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
+    );
+    raw = ((data.result && data.result.songs) || []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      artist: (s.ar || s.artists || []).map((a) => a.name).join(" / "),
+      album: (s.al && s.al.name) || (s.album && s.album.name) || "",
+      art: artOf(s.al || s.album),
+    }));
+  } catch (e) {
+    raw = await searchViaGd(term, offset); /* 代理通道失败 → 直连备用通道 */
+  }
   if (onRaw) onRaw(raw);
   const r = await filterPlayable(raw);
   return { list: r.list, more: raw.length >= PAGE_SIZE, checked: r.checked };
 }
 
-/* 播放地址会过期，所以每次播放前实时解析 */
+/* 播放地址会过期，所以每次播放前实时解析。
+   三通道：GDStudio（CORS 直连，不走代理）→ 网易云接口（经代理）→ Meting 兜底。
+   源明确答复"没有地址"抛 no url；通道全部网络失败抛 net。 */
 async function resolveUrl(id) {
-  const data = await neteaseGet("/song/enhance/player/url?ids=[" + id + "]&br=320000");
-  const u = data.data && data.data[0] && data.data[0].url;
-  return u ? u.replace("http://", "https://") : null;
+  /* 1) GDStudio 直连（最快最稳） */
+  try {
+    const r = await fetchTimeout("https://music-api.gdstudio.xyz/api.php?types=url&source=netease&id=" + id + "&br=320000", 8000);
+    if (r.ok) {
+      const d = await r.json();
+      if (d && d.url) return String(d.url).replace("http://", "https://");
+      throw new Error("no url");
+    }
+  } catch (e) {
+    if (e.message === "no url") throw e; /* 源明确说没有 = 版权问题 */
+    /* 网络问题，落到下一通道 */
+  }
+  /* 2) 网易云官方接口（经代理） */
+  try {
+    const data = await neteaseGet("/song/enhance/player/url?ids=[" + id + "]&br=320000");
+    const u = data.data && data.data[0] && data.data[0].url;
+    if (u) return u.replace("http://", "https://");
+    throw new Error("no url");
+  } catch (e) {
+    if (e.message === "no url") throw e;
+  }
+  /* 3) Meting 兜底 */
+  const r2 = await fetchTimeout("https://api.injahow.cn/meting/?type=song&id=" + id, 8000);
+  if (!r2.ok) throw new Error("net");
+  const arr = await r2.json();
+  const u2 = Array.isArray(arr) && arr[0] && arr[0].url;
+  if (u2) return String(u2).replace("http://", "https://");
+  throw new Error("no url");
 }
 
 /* ---- 渲染 ---- */
@@ -692,15 +741,26 @@ async function playTrack(list, idx) {
   refreshPlaying();
   musicAudio.pause();
   try {
-    const url = await resolveUrl(t.id);
-    if (seq !== playSeq) return; /* 用户已切到别的歌，丢弃旧结果 */
-    if (!url) throw new Error("no url");
+    /* 网络失败自动重试一次；版权问题不重试 */
+    let url = null, lastErr = null;
+    for (let a = 0; a < 2; a++) {
+      try { url = await resolveUrl(t.id); break; }
+      catch (e) {
+        lastErr = e;
+        if (e.message === "no url") break;
+        if (a === 0) await new Promise((r) => setTimeout(r, 900));
+      }
+    }
+    if (seq !== playSeq) return;
+    if (!url) throw lastErr || new Error("net");
     musicAudio.src = url;
     plArtist.textContent = t.artist;
     await musicAudio.play();
   } catch (e) {
     if (seq !== playSeq) return;
-    plArtist.textContent = "暂时无法播放（版权限制），试试其他歌曲吧～";
+    plArtist.textContent = e.message === "no url"
+      ? "这首歌暂时无法播放（版权限制），换一首试试吧～"
+      : "网络开小差了，再点一次试试～";
   }
   refreshPlaying();
 }
