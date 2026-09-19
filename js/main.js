@@ -240,11 +240,14 @@ const COUNTER_KEY = "visitors";
   }
 })();
 
-/* ============ 音乐板块（播放器版） ============ */
-/* 数据来源：iTunes Search API（免费、无需密钥，含 30 秒试听）。
-   收藏保存在浏览器 localStorage（本设备），key: hjy_music_favs */
-const MUSIC_FAV_KEY = "hjy_music_favs";
-const PAGE_SIZE = 12;
+/* ============ 音乐板块（网易云完整版播放器） ============ */
+/* 数据来源：网易云音乐公开接口（经 allorigins CORS 代理），完整版播放。
+   收藏只存歌曲信息（key: hjy_music_favs_v2），播放时再实时解析播放地址（地址会过期） */
+const MUSIC_FAV_KEY = "hjy_music_favs_v2";
+const PAGE_SIZE = 30; /* 每页歌曲数 */
+
+const NE_BASE = "https://music.163.com/api";
+const PROXY = "https://api.allorigins.win/raw?url=";
 
 const musicGrid = document.getElementById("musicGrid");
 const musicStatus = document.getElementById("musicStatus");
@@ -277,17 +280,20 @@ let musicTab = "daily";          /* daily | search | fav */
 const searchCache = {};          /* { 关键词: { 页码: 歌曲列表 } } */
 let searchKw = "", searchPage = 1;
 let dailyList = [];              /* 今日推荐列表 */
-let dailyOffset = 0;             /* 今日推荐「换一批」偏移 */
+let dailyOffset = 0;             /* 换一批偏移：0/30/60 三批轮换 */
 const DAILY_KEYWORDS = [
   "周杰伦", "林俊杰", "薛之谦", "邓紫棋", "陈奕迅", "五月天",
   "Taylor Swift", "Ed Sheeran", "许嵩", "毛不易", "王菲", "张学友",
   "Bruno Mars", "张杰", "李荣浩", "Billie Eilish",
+  "陶喆", "王心凌", "告五人", "房东的猫", "Adele", "Coldplay",
+  "朴树", "郁可唯", "周深", "单依纯", "汪苏泷", "徐佳莹",
 ];
 let dailyKeyword = "";
 
 /* ---- 播放器状态 ---- */
 const musicAudio = new Audio();
 let queue = [], queueIdx = -1;   /* 当前播放队列与位置 */
+let playSeq = 0;                 /* 播放请求序号，防止快速切换时旧响应覆盖 */
 
 function getFavs() {
   try { return JSON.parse(localStorage.getItem(MUSIC_FAV_KEY)) || []; }
@@ -308,36 +314,45 @@ function fmt(sec) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
-function mapTrack(t) {
-  return {
-    id: t.trackId,
-    name: t.trackName,
-    artist: t.artistName,
-    album: t.collectionName || "",
-    art: (t.artworkUrl100 || "").replace("100x100", "200x200"),
-    preview: t.previewUrl,
-  };
+/* ---- 网易云接口（经 CORS 代理） ---- */
+async function neteaseGet(pathAndQuery) {
+  const res = await fetch(PROXY + encodeURIComponent(NE_BASE + pathAndQuery));
+  if (!res.ok) throw new Error("proxy " + res.status);
+  return res.json();
 }
 
 async function fetchTracks(term, offset) {
-  const url = "https://itunes.apple.com/search?term=" + encodeURIComponent(term) +
-    "&media=music&limit=" + PAGE_SIZE + "&offset=" + offset + "&country=TW&lang=zh_cn";
-  const res = await fetch(url);
-  const data = await res.json();
-  return (data.results || []).filter((t) => t.previewUrl).map(mapTrack);
+  const data = await neteaseGet(
+    "/search/get?s=" + encodeURIComponent(term) +
+    "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
+  );
+  return ((data.result && data.result.songs) || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    artist: (s.artists || []).map((a) => a.name).join(" / "),
+    album: (s.album && s.album.name) || "",
+    art: ((s.album && s.album.picUrl) || "").replace("http://", "https://"),
+  }));
+}
+
+/* 播放地址会过期，所以每次播放前实时解析 */
+async function resolveUrl(id) {
+  const data = await neteaseGet("/song/enhance/player/url?ids=[" + id + "]&br=320000");
+  const u = data.data && data.data[0] && data.data[0].url;
+  return u ? u.replace("http://", "https://") : null;
 }
 
 /* ---- 渲染 ---- */
 function trackCard(t) {
   const fav = isFav(t.id);
   const current = queue[queueIdx];
-  const isCur = current && current.id === t.id && !!t.preview;
+  const isCur = current && current.id === t.id;
   return `
   <div class="music-card ${isCur ? "playing" : ""}" data-id="${t.id}">
     <div class="music-art-wrap">
-      <img class="music-art" src="${esc(t.art)}" alt="${esc(t.name)} 封面" loading="lazy" />
+      <img class="music-art" src="${esc(t.art)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
       <button class="music-fav" data-act="fav" aria-label="收藏">${fav ? "❤️" : "🤍"}</button>
-      <button class="music-play" data-act="play" aria-label="播放试听">${isCur && !musicAudio.paused ? "⏸" : "▶"}</button>
+      <button class="music-play" data-act="play" aria-label="播放">${isCur && !musicAudio.paused ? "⏸" : "▶"}</button>
     </div>
     <p class="music-name" title="${esc(t.name)}">${esc(t.name)}</p>
     <p class="music-artist" title="${esc(t.artist)}">${esc(t.artist)}</p>
@@ -354,20 +369,18 @@ function renderMusic() {
   const favs = getFavs();
   favCountEl.textContent = favs.length ? `（${favs.length}）` : "";
 
-  /* 页签控件显隐 */
   searchBar.hidden = musicTab !== "search";
   dailyRefresh.hidden = musicTab !== "daily";
   musicPager.hidden = musicTab !== "search";
   if (musicTab === "daily") {
     const d = new Date();
-    musicHint.textContent = `🎧 今天是 ${d.getMonth() + 1} 月 ${d.getDate()} 日，为你推荐「${dailyKeyword}」的歌单（每天不一样哦）`;
+    musicHint.textContent = `🎵 完整版播放 · 今天是 ${d.getMonth() + 1} 月 ${d.getDate()} 日，为你推荐「${dailyKeyword}」（每天不一样哦）`;
   } else if (musicTab === "search") {
-    musicHint.textContent = "🎧 试听为 30 秒片段（数据来自 iTunes 音乐库），点击 🤍 收藏，收藏保存在本设备上。";
+    musicHint.textContent = "🎵 完整版播放（数据来自网易云音乐）· 点 🤍 收藏 · 个别歌曲因版权可能无法播放";
   } else {
     musicHint.textContent = "❤️ 收藏保存在本设备浏览器中，换设备不会同步。";
   }
 
-  /* 翻页控件状态 */
   if (musicTab === "search") {
     const pageList = (searchCache[searchKw] && searchCache[searchKw][searchPage]) || [];
     pagePrev.disabled = searchPage <= 1;
@@ -385,6 +398,7 @@ function renderMusic() {
 
 /* ---- 每日推荐 ---- */
 async function loadDaily(offset) {
+  dailyOffset = offset;
   musicStatus.textContent = "正在生成今日推荐…";
   musicGrid.innerHTML = "";
   try {
@@ -417,7 +431,7 @@ async function gotoSearchPage(page, force) {
     if (!list.length && page === 1) musicStatus.textContent = "没找到相关音乐，换个关键词试试？";
     renderMusic();
   } catch (e) {
-    musicStatus.textContent = "搜索失败，可能是网络问题，稍后再试～";
+    musicStatus.textContent = "搜索失败，可能是网络波动，稍后再试～";
   }
 }
 
@@ -425,10 +439,11 @@ async function gotoSearchPage(page, force) {
 function showPlayer(t) {
   playerBar.hidden = false;
   document.body.classList.add("player-open");
-  plArt.src = t.art || "";
+  if (t.art) { plArt.src = t.art; plArt.style.visibility = "visible"; }
+  else plArt.style.visibility = "hidden";
   plName.textContent = t.name;
   plName.title = t.name;
-  plArtist.textContent = t.artist;
+  plArtist.textContent = "加载中…";
   plFav.textContent = isFav(t.id) ? "❤️" : "🤍";
 }
 
@@ -442,14 +457,26 @@ function refreshPlaying() {
   });
 }
 
-function playTrack(list, idx) {
+async function playTrack(list, idx) {
   if (!list.length) return;
   queue = list;
   queueIdx = (idx + list.length) % list.length;
+  const seq = ++playSeq;
   const t = queue[queueIdx];
-  musicAudio.src = t.preview;
-  musicAudio.play().catch(() => {});
   showPlayer(t);
+  refreshPlaying();
+  musicAudio.pause();
+  try {
+    const url = await resolveUrl(t.id);
+    if (seq !== playSeq) return; /* 用户已切到别的歌，丢弃旧结果 */
+    if (!url) throw new Error("no url");
+    musicAudio.src = url;
+    plArtist.textContent = t.artist;
+    await musicAudio.play();
+  } catch (e) {
+    if (seq !== playSeq) return;
+    plArtist.textContent = "暂时无法播放（版权限制），试试其他歌曲吧～";
+  }
   refreshPlaying();
 }
 
@@ -457,6 +484,7 @@ function playNext() { if (queue.length) playTrack(queue, queueIdx + 1); }
 function playPrev() { if (queue.length) playTrack(queue, queueIdx - 1); }
 
 function closePlayer() {
+  playSeq++;
   musicAudio.pause();
   musicAudio.removeAttribute("src");
   queue = []; queueIdx = -1;
@@ -520,8 +548,7 @@ musicInput.addEventListener("keydown", (e) => { if (e.key === "Enter") searchMus
 pagePrev.addEventListener("click", () => { if (searchPage > 1) gotoSearchPage(searchPage - 1); });
 pageNext.addEventListener("click", () => gotoSearchPage(searchPage + 1));
 dailyRefresh.addEventListener("click", () => {
-  const next = dailyOffset === 0 ? PAGE_SIZE : 0; /* 两批来回切换 */
-  loadDaily(next);
+  loadDaily((dailyOffset + PAGE_SIZE) % (PAGE_SIZE * 3)); /* 三批轮换 */
 });
 
 /* ---- 卡片按钮：播放 / 收藏（事件委托） ---- */
