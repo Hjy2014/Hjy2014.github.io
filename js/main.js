@@ -378,11 +378,19 @@ async function neteaseGet(pathAndQuery) {
   throw lastErr || new Error("所有网络通道都失败了");
 }
 
-/* 图片加载失败时自动改走代理重试一次（网易云图床偶发被墙/防盗链） */
+/* 图片加载失败兜底：第1步换镜像域名（秒级），第2步走代理，最后隐藏 */
 window.pfImgFallback = function (img) {
-  if (img.dataset.fb) { img.style.visibility = "hidden"; return; }
-  img.dataset.fb = "1";
-  img.src = PROXIES[0](img.src);
+  const step = +(img.dataset.fb || 0);
+  if (step === 0) {
+    img.dataset.fb = "1";
+    img.src = img.src.replace("p1.music.126.net", "p2.music.126.net")
+      .replace("p3.music.126.net", "p2.music.126.net");
+  } else if (step === 1) {
+    img.dataset.fb = "2";
+    img.src = PROXIES[0](img.src);
+  } else {
+    img.style.visibility = "hidden";
+  }
 };
 
 /* 批量可播性检查：一次请求整页歌的播放地址，去掉无版权（拿不到地址）和试听片段的。
@@ -401,21 +409,27 @@ async function filterPlayable(list) {
   }
 }
 
-/* 搜索一页：返回 {list: 过滤后可播放的歌曲, more: 服务端是否还有下一页} */
-async function fetchTracks(term, offset) {
+function artOf(al) {
+  const u = (al && al.picUrl) || "";
+  return u.replace("http://", "https://")
+    + (u && !u.includes("?") ? "?param=240y240" : "");
+}
+
+/* 搜索一页：cloudsearch 接口自带封面地址。
+   onRaw 回调：搜索结果一到就先画出来（不等版权检查），过滤完再更新 */
+async function fetchTracks(term, offset, onRaw) {
   const data = await neteaseGet(
-    "/search/get?s=" + encodeURIComponent(term) +
+    "/cloudsearch/pc?s=" + encodeURIComponent(term) +
     "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
   );
   const raw = ((data.result && data.result.songs) || []).map((s) => ({
     id: s.id,
     name: s.name,
-    artist: (s.artists || []).map((a) => a.name).join(" / "),
-    album: (s.album && s.album.name) || "",
-    art: ((s.album && s.album.picUrl) || "")
-      .replace("http://", "https://")
-      + (s.album && s.album.picUrl && !s.album.picUrl.includes("?") ? "?param=240y240" : ""),
+    artist: (s.ar || s.artists || []).map((a) => a.name).join(" / "),
+    album: (s.al && s.al.name) || (s.album && s.album.name) || "",
+    art: artOf(s.al || s.album),
   }));
+  if (onRaw) onRaw(raw);
   const r = await filterPlayable(raw);
   return { list: r.list, more: raw.length >= PAGE_SIZE, checked: r.checked };
 }
@@ -490,7 +504,11 @@ async function loadDaily(offset) {
   musicStatus.textContent = "正在生成今日推荐…";
   musicGrid.innerHTML = "";
   try {
-    const res = await fetchTracks(dailyKeyword, offset);
+    const res = await fetchTracks(dailyKeyword, offset, (raw) => {
+      /* 推荐列表一到就先显示（已带封面），版权过滤在后台继续 */
+      dailyList = raw;
+      if (musicView === "home") { renderMusic(); musicStatus.textContent = "正在过滤无版权歌曲…"; }
+    });
     dailyList = res.list;
     if (musicView === "home") {
       renderMusic();
@@ -498,7 +516,7 @@ async function loadDaily(offset) {
     }
     if (res.checked) { /* 只有确认过滤过的列表才值得缓存（v=缓存格式版本） */
       try {
-        localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 2, day: dayKey(), off: offset, list: dailyList }));
+        localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 3, day: dayKey(), off: offset, list: dailyList }));
       } catch (e) { /* 忽略存储失败 */ }
     }
   } catch (e) {
@@ -524,10 +542,17 @@ async function gotoSearchPage(page, force) {
   musicStatus.textContent = "正在搜索…";
   musicGrid.innerHTML = "";
   try {
-    const res = await fetchTracks(searchKw, (page - 1) * PAGE_SIZE);
-    searchCache[searchKw][page] = res;
+    const res = await fetchTracks(searchKw, (page - 1) * PAGE_SIZE, (raw) => {
+      /* 搜索结果一到就先显示（此时已带封面），版权过滤在后台继续 */
+      searchCache[searchKw][page] = { list: raw, more: raw.length >= PAGE_SIZE };
+      searchPage = page;
+      musicStatus.textContent = "正在过滤无版权歌曲…";
+      renderMusic();
+    });
+    searchCache[searchKw][page] = { list: res.list, more: res.more };
     searchPage = page;
     if (!res.list.length && page === 1) musicStatus.textContent = "没找到相关音乐（无版权的已自动过滤），换个关键词试试？";
+    else musicStatus.textContent = "";
     renderMusic();
   } catch (e) {
     musicStatus.textContent = "搜索失败，可能是网络波动，稍后再试～";
@@ -813,7 +838,7 @@ function dayKey() {
   dailyKeyword = DAILY_KEYWORDS[dayKey() % DAILY_KEYWORDS.length];
   try {
     const c = JSON.parse(localStorage.getItem(DAILY_CACHE_KEY));
-    if (c && c.v === 2 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
+    if (c && c.v === 3 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
       dailyList = c.list;
       dailyOffset = c.off || 0;
       renderMusic();
