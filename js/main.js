@@ -55,8 +55,25 @@ const statObserver = new IntersectionObserver(
 );
 document.querySelectorAll(".stat b").forEach((el) => statObserver.observe(el));
 
-/* 平滑滚动到锚点（点击瞬间计算目标位置，避免评论区懒加载导致的漂移） */
+/* 平滑滚动到锚点：每帧重新计算目标位置，
+   即使滚动途中页面高度变化（如评论区加载）也能准确落在目标区块 */
 const NAV_OFFSET = 84;
+function smoothScrollTo(target) {
+  const startY = window.scrollY;
+  const dist = target.getBoundingClientRect().top - NAV_OFFSET;
+  const duration = Math.min(Math.max(Math.abs(dist) / 3, 400), 900);
+  const start = performance.now();
+  function frame(now) {
+    const p = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    /* 每帧用元素当前位置重新算目标，自动校正布局变化 */
+    const goal = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
+    window.scrollTo(0, startY + (goal - startY) * ease);
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
 document.querySelectorAll('a[href^="#"]').forEach((a) => {
   a.addEventListener("click", (e) => {
     const id = a.getAttribute("href").slice(1);
@@ -64,8 +81,7 @@ document.querySelectorAll('a[href^="#"]').forEach((a) => {
     if (!target) return;
     e.preventDefault();
     requestAnimationFrame(() => {
-      const top = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
-      window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+      smoothScrollTo(target);
       history.replaceState(null, "", "#" + id);
     });
   });
