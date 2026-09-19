@@ -248,7 +248,7 @@ const MUSIC_FAV_KEY = "hjy_music_favs_v2";
 const PLAYER_POS_KEY = "hjy_player_pos";
 const PLAYER_SCALE_KEY = "hjy_player_scale";
 const DAILY_CACHE_KEY = "hjy_daily_cache";
-const PAGE_SIZE = 30; /* 每页歌曲数 */
+const PAGE_SIZE = 12; /* 每页歌曲数：页小响应快，逐页搜索逐页展示 */
 
 const NE_BASE = "https://music.163.com/api";
 /* 多个公共 CORS 代理兜底：请求时前两个并行竞速，哪个快用哪个；失败的通道下次自动降级 */
@@ -415,7 +415,7 @@ function artOf(al) {
     + (u && !u.includes("?") ? "?param=240y240" : "");
 }
 
-/* 备用搜索通道：GDStudio（CORS 直连，不走公共代理），代理全挂时顶上 */
+/* GDStudio 搜索通道（CORS 直连，不走公共代理） */
 async function searchViaGd(term, offset) {
   const page = Math.floor(offset / PAGE_SIZE) + 1;
   const r = await fetchTimeout(
@@ -432,24 +432,53 @@ async function searchViaGd(term, offset) {
   }));
 }
 
-/* 搜索一页：cloudsearch 接口自带封面地址。
-   onRaw 回调：搜索结果一到就先画出来（不等版权检查），过滤完再更新 */
+/* 网易云搜索一页（cloudsearch 自带封面） */
+async function neSearchRaw(term, offset) {
+  const data = await neteaseGet(
+    "/cloudsearch/pc?s=" + encodeURIComponent(term) +
+    "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
+  );
+  return ((data.result && data.result.songs) || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    artist: (s.ar || s.artists || []).map((a) => a.name).join(" / "),
+    album: (s.al && s.al.name) || (s.album && s.album.name) || "",
+    art: artOf(s.al || s.album),
+  }));
+}
+
+/* 双通道赛跑：两条搜索通道同时发请求，谁先带回非空结果用谁；
+   全空返回空（正常显示“没找到”），全失败才抛错 */
+function raceSearch(pairs) {
+  return new Promise((resolve, reject) => {
+    let pending = pairs.length, settled = false, lastEmpty = null;
+    pairs.forEach((p) => p.then((res) => {
+      if (settled) return;
+      if (res.raw && res.raw.length) { settled = true; resolve(res); }
+      else { lastEmpty = res; if (--pending === 0) { settled = true; resolve(lastEmpty); } }
+    }, (e) => {
+      if (settled) return;
+      if (--pending === 0) { settled = true; if (lastEmpty) resolve(lastEmpty); else reject(e); }
+    }));
+  });
+}
+
+const searchChannel = {}; /* 记住每个关键词上次赢的通道，后续翻页优先走它 */
+
+/* 搜索一页：双通道竞速。
+   onRaw 回调：结果一到就先画出来（不等版权检查），过滤完再更新 */
 async function fetchTracks(term, offset, onRaw) {
+  const order = searchChannel[term] === "gd" ? ["gd", "ne"] : ["ne", "gd"];
   let raw;
   try {
-    const data = await neteaseGet(
-      "/cloudsearch/pc?s=" + encodeURIComponent(term) +
-      "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
-    );
-    raw = ((data.result && data.result.songs) || []).map((s) => ({
-      id: s.id,
-      name: s.name,
-      artist: (s.ar || s.artists || []).map((a) => a.name).join(" / "),
-      album: (s.al && s.al.name) || (s.album && s.album.name) || "",
-      art: artOf(s.al || s.album),
-    }));
+    const win = await raceSearch(order.map((ch) => ({
+      ch,
+      raw: ch === "ne" ? neSearchRaw(term, offset) : searchViaGd(term, offset),
+    })));
+    searchChannel[term] = win.ch;
+    raw = win.raw;
   } catch (e) {
-    raw = await searchViaGd(term, offset); /* 代理通道失败 → 直连备用通道 */
+    throw new Error("所有搜索通道都失败了");
   }
   if (onRaw) onRaw(raw);
   const r = await filterPlayable(raw);
@@ -603,6 +632,13 @@ async function gotoSearchPage(page, force) {
     if (!res.list.length && page === 1) musicStatus.textContent = "没找到相关音乐（无版权的已自动过滤），换个关键词试试？";
     else musicStatus.textContent = "";
     renderMusic();
+    /* 后台预取下一页：翻页时秒开 */
+    if (res.more && !searchCache[searchKw][page + 1]) {
+      fetchTracks(searchKw, page * PAGE_SIZE).then((r2) => {
+        searchCache[searchKw][page + 1] = { list: r2.list, more: r2.more };
+        if (musicView === "search" && searchPage === page) renderMusic(); /* 让"下一页"按钮状态就绪 */
+      }).catch(() => { /* 预取失败无所谓，真翻页时会重新拉 */ });
+    }
   } catch (e) {
     musicStatus.textContent = "搜索失败，可能是网络波动，稍后再试～";
   }
