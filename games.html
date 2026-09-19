@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scratch 小游戏 · 胡建宇</title>
+  <meta name="description" content="胡建宇的 Scratch 小游戏合集，在线直接玩。" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 导航 -->
+  <header class="navbar" id="navbar">
+    <div class="container nav-inner">
+      <a class="logo" href="index.html">Hjy<span>.</span>Dev</a>
+      <nav class="nav-links">
+        <a href="index.html">← 返回主页</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- 页面标题 -->
+  <section class="games-hero">
+    <div class="container">
+      <h1>🎮 Scratch 小游戏</h1>
+      <p>用 Scratch 开发的小游戏合集，点击即可在线畅玩～</p>
+    </div>
+  </section>
+
+  <!-- 游戏列表（新游戏往这里加） -->
+  <section class="section" id="games">
+    <div class="container">
+      <div class="games-grid" id="gamesGrid">
+        <!--
+          以后每加一个游戏，复制一份下面的结构：
+          <div class="game-card">
+            <h3>游戏名称</h3>
+            <iframe src="https://turbowarp.org/embed.html#<项目链接>" ...></iframe>
+          </div>
+        -->
+      </div>
+      <div class="games-empty">
+        <div class="games-empty-icon">🐱</div>
+        <h2>更多小游戏，敬请期待</h2>
+        <p>我正在加紧制作中，记得常回来看看哦～</p>
+        <a class="btn btn-primary" href="index.html">返回主页</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> 胡建宇 · 用 ❤️ 与好奇心 构建 · 托管于 GitHub Pages</p>
+  </footer>
+
+  <script src="js/main.js"></script>
+  <script>
+    document.getElementById("navbar").classList.add("scrolled");
+  </script>
+</body>
+</html>

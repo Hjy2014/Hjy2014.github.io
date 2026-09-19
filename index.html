@@ -68,7 +68,7 @@
           </ul>
         </div>
         <div class="about-stats">
-          <div class="stat"><b data-count="6">0</b><span>年开发经验</span></div>
+          <div class="stat"><b data-count="6">0</b><span>年编程经验</span></div>
           <div class="stat"><b data-count="10">0</b><span>完成小项目</span></div>
           <div class="stat"><b data-count="5">0</b><span>开源作品</span></div>
         </div>
@@ -94,11 +94,11 @@
     <div class="container">
       <h2 class="section-title reveal">我的小作品</h2>
       <div class="projects-grid reveal">
-        <article class="project-card">
-          <div class="project-thumb thumb-a">🌐</div>
-          <h3>天气可视化仪表盘</h3>
-          <p>基于 Canvas 的实时天气数据可视化，支持城市切换与历史趋势分析。</p>
-          <div class="tags"><span>Vue</span><span>ECharts</span><span>API</span></div>
+        <article class="project-card project-link" onclick="location.href='games.html'">
+          <div class="project-thumb thumb-a">🐱</div>
+          <h3>Scratch 小游戏</h3>
+          <p>用 Scratch 开发的小游戏合集，点进来直接玩！</p>
+          <div class="tags"><span>Scratch</span><span>游戏</span></div>
         </article>
         <article class="project-card">
           <div class="project-thumb thumb-b">🎮</div>
@@ -120,21 +120,28 @@
   <section class="section section-alt" id="comments">
     <div class="container">
       <h2 class="section-title reveal">留言板</h2>
-      <div class="comments-grid reveal">
-        <!-- 左：写留言 -->
-        <div class="comment-form">
-          <h3>✍️ 写下你的想法</h3>
-          <textarea id="commentInput" maxlength="200"
-            placeholder="可以评价一下我网站吗？或者反馈一下Bug，谢谢。"></textarea>
-          <div class="form-foot">
-            <span class="char-count" id="charCount">0 / 200</span>
-            <button class="btn btn-primary btn-sm" id="commentSubmit">发表留言</button>
-          </div>
-        </div>
-        <!-- 右：评论区 -->
-        <div class="comment-list" id="commentList">
-          <p class="comment-empty" id="commentEmpty">还没有留言，快来抢沙发吧～ 💬</p>
-        </div>
+
+      <!-- 公共评论区（giscus，评论存于 GitHub Discussions） -->
+      <div class="giscus-wrap reveal">
+        <h3>🌐 公共评论区</h3>
+        <p class="giscus-note">💡 注意：只有拥有 GitHub 账号的访客才能在此实时评论并显示给所有人；如若没有，将无法被其他访客看到。</p>
+        <script src="https://giscus.app/client.js"
+          data-repo="Hjy2014/Hjy2014.github.io"
+          data-repo-id="R_kgDOUgNLJQ"
+          data-category="General"
+          data-category-id="DIC_kwDOUgNLJc4DF43O"
+          data-mapping="specific"
+          data-term="留言板"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="light"
+          data-lang="zh-CN"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async>
+        </script>
       </div>
     </div>
   </section>

@@ -150,65 +150,54 @@ a { color: inherit; text-decoration: none; }
   padding: 3px 10px; border-radius: 999px;
 }
 
-/* ============ 留言板 ============ */
-.comments-grid {
-  display: grid; grid-template-columns: 1fr 1.2fr; gap: 32px; align-items: start;
-}
-.comment-form, .comment-list .comment-item {
+/* 公共评论区（giscus） */
+.giscus-wrap {
+  margin-top: 48px;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 24px;
 }
-.comment-form { padding: 24px; }
-.comment-form h3 { font-size: 1.05rem; margin-bottom: 14px; }
-.comment-form textarea {
-  width: 100%; min-height: 140px; resize: vertical;
-  border: 1.5px solid var(--border); border-radius: 10px;
-  padding: 12px 14px; font: inherit; font-size: 0.95rem; color: var(--text);
-  background: var(--bg); outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+.giscus-wrap h3 { font-size: 1.05rem; margin-bottom: 10px; }
+.giscus-note {
+  color: var(--text-muted); font-size: 0.88rem;
+  background: var(--primary-soft); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 18px;
 }
-.comment-form textarea:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--primary-soft);
-}
-.comment-form textarea::placeholder { color: #a3aec0; }
-.form-foot {
-  display: flex; justify-content: space-between; align-items: center; margin-top: 14px;
-}
-.char-count { color: var(--text-muted); font-size: 0.82rem; }
-.btn-sm { padding: 9px 22px; font-size: 0.88rem; }
 
-.comment-list { display: grid; gap: 16px; max-height: 560px; overflow-y: auto; padding: 2px; }
-.comment-empty { color: var(--text-muted); text-align: center; padding: 48px 0; }
-.comment-item { display: flex; gap: 14px; padding: 18px 20px; }
-.comment-avatar {
-  flex: none; width: 42px; height: 42px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; background: var(--primary-soft);
-}
-.comment-main { flex: 1; min-width: 0; }
-.comment-meta { display: flex; align-items: baseline; gap: 10px; }
-.comment-meta b { font-size: 0.92rem; }
-.comment-meta time { color: var(--text-muted); font-size: 0.78rem; }
-.comment-text { color: var(--text-muted); font-size: 0.93rem; margin-top: 4px; word-break: break-word; white-space: pre-wrap; }
-.comment-actions { display: flex; gap: 10px; margin-top: 10px; }
-.act {
-  border: 1px solid var(--border); background: var(--bg); border-radius: 999px;
-  padding: 3px 12px; font-size: 0.82rem; color: var(--text-muted);
-  cursor: pointer; font-family: inherit;
-  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.1s;
-}
-.act:hover { border-color: var(--primary); color: var(--primary); }
-.act:active { transform: scale(0.94); }
-.act.liked { background: var(--primary-soft); border-color: var(--primary); color: var(--primary); font-weight: 600; }
-.act.blocked-on { background: #fee2e2; border-color: #f87171; color: #dc2626; }
+/* 可点击的作品卡片 */
+.project-link { cursor: pointer; }
+.project-link:hover h3 { color: var(--primary); }
 
-/* 被屏蔽的评论 */
-.comment-item.is-blocked { opacity: 0.75; }
-.comment-item.is-blocked .comment-text {
-  color: #b6c0ce; font-style: italic;
+/* ============ Scratch 游戏页 ============ */
+.games-hero {
+  padding: 140px 0 40px; text-align: center;
+  background:
+    radial-gradient(500px 300px at 80% 20%, rgba(79, 70, 229, 0.12), transparent 60%),
+    radial-gradient(400px 260px at 15% 90%, rgba(6, 182, 212, 0.10), transparent 60%);
 }
-.blocked-tip { color: #dc2626; font-size: 0.78rem; margin-top: 6px; }
+.games-hero h1 { font-size: clamp(2rem, 6vw, 3rem); font-weight: 900; letter-spacing: 2px; }
+.games-hero p { color: var(--text-muted); margin-top: 10px; }
+.games-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px;
+}
+.game-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.game-card h3 { padding: 16px 20px 4px; font-size: 1.1rem; }
+.game-card iframe {
+  display: block; width: 100%; aspect-ratio: 4 / 3; border: 0;
+  background: #f1f5f9;
+}
+.games-empty { text-align: center; padding: 64px 0 96px; }
+.games-empty-icon { font-size: 4rem; margin-bottom: 12px; }
+.games-empty h2 { font-size: 1.6rem; font-weight: 800; margin-bottom: 8px; }
+.games-empty p { color: var(--text-muted); margin-bottom: 28px; }
+
+@media (max-width: 900px) {
+  .games-grid { grid-template-columns: 1fr; }
+}
 
 /* ============ 联系 ============ */
 .contact-inner { text-align: center; }
@@ -227,7 +216,6 @@ a { color: inherit; text-decoration: none; }
   .about-grid { grid-template-columns: 1fr; }
   .skills-grid { grid-template-columns: repeat(2, 1fr); }
   .projects-grid { grid-template-columns: 1fr; }
-  .comments-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .nav-toggle { display: flex; }
