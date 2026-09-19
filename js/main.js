@@ -239,3 +239,151 @@ const COUNTER_KEY = "visitors";
     el.remove(); /* 计数服务不可用时静默隐藏 */
   }
 })();
+
+/* ============ 音乐板块 ============ */
+/* 数据来源：iTunes Search API（免费、无需密钥，含 30 秒试听）。
+   收藏保存在浏览器 localStorage（本设备），key: hjy_music_favs */
+const MUSIC_FAV_KEY = "hjy_music_favs";
+const musicGrid = document.getElementById("musicGrid");
+const musicStatus = document.getElementById("musicStatus");
+const musicInput = document.getElementById("musicInput");
+const musicSearchBtn = document.getElementById("musicSearchBtn");
+const favCountEl = document.getElementById("favCount");
+
+let musicTab = "search"; /* 当前页签：search | fav */
+let lastResults = [];    /* 最近一次搜索结果 */
+let musicAudio = null;   /* 全局唯一播放器，保证同时只播一首 */
+let playingId = null;    /* 正在播放的歌曲 id */
+
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem(MUSIC_FAV_KEY)) || []; }
+  catch (e) { return []; }
+}
+function setFavs(list) { localStorage.setItem(MUSIC_FAV_KEY, JSON.stringify(list)); }
+function isFav(id) { return getFavs().some((t) => t.id === id); }
+
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+function trackCard(t) {
+  const fav = isFav(t.id);
+  return `
+  <div class="music-card ${playingId === t.id ? "playing" : ""}" data-id="${t.id}">
+    <div class="music-art-wrap">
+      <img class="music-art" src="${esc(t.art)}" alt="${esc(t.name)} 封面" loading="lazy" />
+      <button class="music-fav" data-act="fav" aria-label="收藏">${fav ? "❤️" : "🤍"}</button>
+      <button class="music-play" data-act="play" aria-label="播放试听">${playingId === t.id ? "⏸" : "▶"}</button>
+    </div>
+    <p class="music-name" title="${esc(t.name)}">${esc(t.name)}</p>
+    <p class="music-artist" title="${esc(t.artist)}">${esc(t.artist)}</p>
+  </div>`;
+}
+
+function renderMusic() {
+  const favs = getFavs();
+  favCountEl.textContent = favs.length ? `（${favs.length}）` : "";
+  let list;
+  if (musicTab === "fav") {
+    list = favs;
+    musicStatus.textContent = list.length ? "" : "还没有收藏，去搜索一首喜欢的歌吧～";
+  } else {
+    list = lastResults;
+    if (!list.length) musicStatus.textContent = "输入关键词，搜索你喜欢的音乐吧 🎧";
+  }
+  musicGrid.innerHTML = list.map(trackCard).join("");
+}
+
+async function searchMusic() {
+  const kw = musicInput.value.trim();
+  if (!kw) { musicStatus.textContent = "先输入想听的歌名或歌手吧～"; return; }
+  musicStatus.textContent = "正在搜索…";
+  musicGrid.innerHTML = "";
+  try {
+    const url = "https://itunes.apple.com/search?term=" + encodeURIComponent(kw) +
+      "&media=music&limit=24&country=TW&lang=zh_cn";
+    const res = await fetch(url);
+    const data = await res.json();
+    lastResults = (data.results || [])
+      .filter((t) => t.previewUrl)
+      .map((t) => ({
+        id: t.trackId,
+        name: t.trackName,
+        artist: t.artistName,
+        album: t.collectionName || "",
+        art: (t.artworkUrl100 || "").replace("100x100", "200x200"),
+        preview: t.previewUrl,
+      }));
+    musicStatus.textContent = lastResults.length ? "" : "没找到相关音乐，换个关键词试试？";
+    renderMusic();
+  } catch (e) {
+    musicStatus.textContent = "搜索失败，可能是网络问题，稍后再试～";
+  }
+}
+
+function stopMusic() {
+  if (musicAudio) { musicAudio.pause(); musicAudio = null; }
+  playingId = null;
+  refreshPlaying();
+}
+
+function refreshPlaying() {
+  document.querySelectorAll(".music-card").forEach((card) => {
+    const on = String(playingId) === card.dataset.id;
+    card.classList.toggle("playing", on);
+    card.querySelector(".music-play").textContent = on ? "⏸" : "▶";
+  });
+}
+
+function togglePlay(t) {
+  if (playingId === t.id && musicAudio) { stopMusic(); return; }
+  stopMusic();
+  musicAudio = new Audio(t.preview);
+  musicAudio.addEventListener("ended", stopMusic);
+  playingId = t.id;
+  refreshPlaying();
+  musicAudio.play().catch(() => stopMusic());
+}
+
+/* 页签切换 */
+document.querySelectorAll(".music-tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".music-tab").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    musicTab = btn.dataset.tab;
+    renderMusic();
+  });
+});
+
+/* 搜索 */
+musicSearchBtn.addEventListener("click", searchMusic);
+musicInput.addEventListener("keydown", (e) => { if (e.key === "Enter") searchMusic(); });
+
+/* 卡片按钮：播放 / 收藏（事件委托） */
+musicGrid.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const card = btn.closest(".music-card");
+  const id = Number(card.dataset.id);
+  const list = musicTab === "fav" ? getFavs() : lastResults;
+  const track = list.find((t) => t.id === id);
+  if (!track) return;
+  if (btn.dataset.act === "play") {
+    togglePlay(track);
+  } else if (btn.dataset.act === "fav") {
+    const favs = getFavs();
+    const i = favs.findIndex((t) => t.id === id);
+    if (i >= 0) {
+      favs.splice(i, 1);
+      if (playingId === id) stopMusic();
+    } else {
+      favs.push(track);
+    }
+    setFavs(favs);
+    renderMusic();
+  }
+});
+
+renderMusic();
