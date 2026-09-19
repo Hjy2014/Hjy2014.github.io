@@ -119,6 +119,26 @@
     </div>
   </section>
 
+  <!-- 音乐 -->
+  <section class="section section-alt section-music" id="music">
+    <div class="container">
+      <h2 class="section-title reveal">🎵 音乐板块</h2>
+      <div class="music-wrap reveal">
+        <div class="music-tabs">
+          <button class="music-tab active" data-tab="search">🔍 搜索</button>
+          <button class="music-tab" data-tab="fav">❤️ 我的收藏<span id="favCount"></span></button>
+        </div>
+        <div class="music-searchbar">
+          <input id="musicInput" type="text" placeholder="输入歌曲、歌手或专辑名，回车搜索…" />
+          <button class="btn btn-primary music-search-btn" id="musicSearchBtn">搜索</button>
+        </div>
+        <p class="music-hint">🎧 试听为 30 秒片段（数据来自 iTunes 音乐库），点击 🤍 收藏喜欢的歌，收藏保存在本设备上。</p>
+        <div class="music-status" id="musicStatus"></div>
+        <div class="music-grid" id="musicGrid"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- 留言板 -->
   <section class="section section-alt" id="comments">
     <div class="container">
