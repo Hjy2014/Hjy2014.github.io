@@ -308,6 +308,85 @@ a { color: inherit; text-decoration: none; }
   .games-grid { grid-template-columns: 1fr; }
 }
 
+/* ============ 音乐板块 ============ */
+.section-music {
+  background:
+    radial-gradient(500px 300px at 90% 10%, rgba(79, 70, 229, 0.10), transparent 60%),
+    radial-gradient(400px 280px at 5% 90%, rgba(6, 182, 212, 0.10), transparent 60%),
+    var(--bg-alt);
+}
+.music-wrap {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 24px;
+}
+.music-tabs { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+.music-tab {
+  border: 1.5px solid var(--border); background: var(--bg);
+  border-radius: 999px; padding: 8px 18px;
+  font: inherit; font-size: 0.92rem; font-weight: 600; color: var(--text-muted);
+  cursor: pointer; transition: all 0.2s;
+}
+.music-tab:hover { border-color: var(--primary); color: var(--primary); }
+.music-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+.music-searchbar { display: flex; gap: 12px; }
+.music-searchbar input {
+  flex: 1; min-width: 0;
+  border: 1.5px solid var(--border); border-radius: 999px;
+  padding: 11px 20px; font: inherit; color: var(--text); background: var(--bg);
+  outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.music-searchbar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.music-search-btn { padding: 11px 26px; border: none; cursor: pointer; flex: none; }
+.music-hint { color: var(--text-muted); font-size: 0.85rem; margin: 12px 0 0; }
+.music-status { color: var(--text-muted); font-size: 0.92rem; min-height: 1.6em; margin: 8px 0 12px; }
+.music-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 18px;
+}
+.music-card {
+  position: relative;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+  padding: 12px; transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+.music-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+.music-card.playing { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+.music-art-wrap { position: relative; }
+.music-art {
+  width: 100%; aspect-ratio: 1; object-fit: cover;
+  border-radius: 8px; display: block; background: var(--bg-alt);
+}
+.music-play {
+  position: absolute; right: 8px; bottom: 8px;
+  width: 38px; height: 38px; border-radius: 50%; border: none;
+  background: var(--primary); color: #fff; font-size: 0.95rem;
+  cursor: pointer; opacity: 0.92; transition: transform 0.15s, background 0.2s;
+}
+.music-play:hover { transform: scale(1.12); background: #4338ca; }
+.music-name {
+  margin-top: 10px; font-weight: 700; font-size: 0.92rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.music-artist {
+  color: var(--text-muted); font-size: 0.8rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.music-fav {
+  position: absolute; top: 18px; left: 18px;
+  width: 32px; height: 32px; border-radius: 50%; border: none;
+  background: rgba(255, 255, 255, 0.92); font-size: 0.95rem;
+  cursor: pointer; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.18);
+  transition: transform 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.music-fav:hover { transform: scale(1.15); }
+
+@media (max-width: 640px) {
+  .music-searchbar { flex-direction: column; }
+  .music-search-btn { width: 100%; }
+  .music-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px; }
+}
+
 /* ============ 联系 ============ */
 .contact-inner { text-align: center; }
 .contact-desc { color: var(--text-muted); margin-bottom: 32px; }
