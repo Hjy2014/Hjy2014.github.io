@@ -248,6 +248,25 @@ const MUSIC_FAV_KEY = "hjy_music_favs_v2";
 const PLAYER_POS_KEY = "hjy_player_pos";
 const PLAYER_SCALE_KEY = "hjy_player_scale";
 const DAILY_CACHE_KEY = "hjy_daily_cache";
+const SEARCH_DISK_KEY = "hjy_search_cache_v1";
+
+/* 搜索结果磁盘缓存：网络波动时用之前搜过的结果兜底（只存过滤过的列表，上限 40 条） */
+function loadSearchDisk() {
+  try { return JSON.parse(localStorage.getItem(SEARCH_DISK_KEY)) || {}; }
+  catch (e) { return {}; }
+}
+function saveSearchDisk(kw, page, entry) {
+  try {
+    const d = loadSearchDisk();
+    d[kw + "\u0001" + page] = { t: Date.now(), list: entry.list, more: entry.more };
+    const keys = Object.keys(d);
+    if (keys.length > 40) {
+      keys.sort((a, b) => d[a].t - d[b].t).slice(0, keys.length - 40)
+        .forEach((k) => delete d[k]);
+    }
+    localStorage.setItem(SEARCH_DISK_KEY, JSON.stringify(d));
+  } catch (e) { /* 存储失败不影响主流程 */ }
+}
 const PAGE_SIZE = 12; /* 每页歌曲数：页小响应快，逐页搜索逐页展示 */
 
 const NE_BASE = "https://music.163.com/api";
@@ -358,9 +377,9 @@ async function neteaseGet(pathAndQuery) {
   const order = [goodProxy, ...idxs.filter((i) => i !== goodProxy)];
   let lastErr = null;
   for (let pass = 0; pass < 2; pass++) {           /* 整轮失败后歇 800ms 再来一轮 */
-    /* 前两个代理并行竞速：谁先成功用谁 */
+    /* 前三个代理并行竞速：谁先成功用谁 */
     try {
-      const racers = order.slice(0, 2).map(async (idx) => ({ idx, data: await tryProxy(idx, target) }));
+      const racers = order.slice(0, 3).map(async (idx) => ({ idx, data: await tryProxy(idx, target) }));
       const win = await Promise.any(racers);
       goodProxy = win.idx;
       return win.data;
@@ -639,8 +658,18 @@ async function gotoSearchPage(page, force) {
         if (musicView === "search" && searchPage === page) renderMusic(); /* 让"下一页"按钮状态就绪 */
       }).catch(() => { /* 预取失败无所谓，真翻页时会重新拉 */ });
     }
+    if (res.checked && res.list.length) saveSearchDisk(searchKw, page, res); /* 存到本地，断网也有 */
   } catch (e) {
-    musicStatus.textContent = "搜索失败，可能是网络波动，稍后再试～";
+    /* 网络失败 → 用之前搜过的本地结果兜底 */
+    const hit = loadSearchDisk()[searchKw + "\u0001" + page];
+    if (hit && Array.isArray(hit.list) && hit.list.length) {
+      searchCache[searchKw][page] = { list: hit.list, more: hit.more };
+      searchPage = page;
+      musicStatus.textContent = "网络波动，先显示之前搜过的结果～";
+      renderMusic();
+    } else {
+      musicStatus.textContent = "搜索失败，可能是网络波动，稍后再试～";
+    }
   }
 }
 
@@ -845,6 +874,30 @@ plClose.addEventListener("click", closePlayer);
 musicAudio.addEventListener("ended", playNext);
 musicAudio.addEventListener("play", refreshPlaying);
 musicAudio.addEventListener("pause", refreshPlaying);
+
+/* ---- 播放中网络波动自愈：音频出错（地址过期/断网）时重新解析并从原进度继续，最多 3 次 ---- */
+let audioRecover = 0;
+musicAudio.addEventListener("playing", () => { audioRecover = 0; });
+musicAudio.addEventListener("error", async () => {
+  const cur = queue[queueIdx];
+  if (!cur || audioRecover >= 3) return;   /* 无歌在播/重试次数用尽 */
+  audioRecover++;
+  const at = musicAudio.currentTime || 0;
+  plArtist.textContent = "网络波动，正在重连…";
+  try {
+    const url = await resolveUrl(cur.id);
+    if (queue[queueIdx] !== cur) return;   /* 用户已切歌 */
+    musicAudio.src = url;
+    musicAudio.addEventListener("loadedmetadata", () => {
+      try { musicAudio.currentTime = at; } catch (e) { /* 进度恢复失败就算了 */ }
+    }, { once: true });
+    await musicAudio.play();
+  } catch (e) {
+    if (queue[queueIdx] === cur && musicAudio.error) {
+      plArtist.textContent = "网络不稳定，点播放键再试一次～";
+    }
+  }
+});
 musicAudio.addEventListener("loadedmetadata", () => {
   plDur.textContent = fmt(musicAudio.duration);
   plSeek.max = Math.floor(musicAudio.duration) || 30;
