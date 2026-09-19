@@ -385,18 +385,19 @@ window.pfImgFallback = function (img) {
   img.src = PROXIES[0](img.src);
 };
 
-/* 批量可播性检查：一次请求整页歌的播放地址，去掉无版权（拿不到地址）和试听片段的 */
+/* 批量可播性检查：一次请求整页歌的播放地址，去掉无版权（拿不到地址）和试听片段的。
+   返回 {list, checked}：checked=false 表示检查本身失败（此时不筛，也不该被缓存） */
 async function filterPlayable(list) {
-  if (!list.length) return list;
+  if (!list.length) return { list, checked: false };
   try {
     const ids = "[" + list.map((t) => t.id).join(",") + "]";
     const data = await neteaseGet("/song/enhance/player/url?ids=" + ids + "&br=320000");
     const ok = new Set((data.data || [])
       .filter((d) => d && d.url && !d.freeTrialInfo) /* 无地址=无版权；freeTrialInfo=30秒试听 */
       .map((d) => d.id));
-    return list.filter((t) => ok.has(t.id));
+    return { list: list.filter((t) => ok.has(t.id)), checked: true };
   } catch (e) {
-    return list; /* 检查通道失败时不误杀，宁可先显示 */
+    return { list, checked: false }; /* 检查通道失败时不误杀，宁可先显示 */
   }
 }
 
@@ -415,8 +416,8 @@ async function fetchTracks(term, offset) {
       .replace("http://", "https://")
       + (s.album && s.album.picUrl && !s.album.picUrl.includes("?") ? "?param=240y240" : ""),
   }));
-  const list = await filterPlayable(raw);
-  return { list, more: raw.length >= PAGE_SIZE };
+  const r = await filterPlayable(raw);
+  return { list: r.list, more: raw.length >= PAGE_SIZE, checked: r.checked };
 }
 
 /* 播放地址会过期，所以每次播放前实时解析 */
@@ -489,11 +490,17 @@ async function loadDaily(offset) {
   musicStatus.textContent = "正在生成今日推荐…";
   musicGrid.innerHTML = "";
   try {
-    dailyList = (await fetchTracks(dailyKeyword, offset)).list;
-    if (musicView === "home") renderMusic();
-    try { /* 存到本地，今天内再打开秒出、断网也有 */
-      localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ day: dayKey(), off: offset, list: dailyList }));
-    } catch (e) { /* 忽略存储失败 */ }
+    const res = await fetchTracks(dailyKeyword, offset);
+    dailyList = res.list;
+    if (musicView === "home") {
+      renderMusic();
+      if (!res.list.length) musicStatus.textContent = "这一批没有可播放的歌曲，点「换一批」试试吧～";
+    }
+    if (res.checked) { /* 只有确认过滤过的列表才值得缓存（v=缓存格式版本） */
+      try {
+        localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 2, day: dayKey(), off: offset, list: dailyList }));
+      } catch (e) { /* 忽略存储失败 */ }
+    }
   } catch (e) {
     musicStatus.textContent = "推荐获取失败，点「换一批」再试试～";
   }
@@ -750,7 +757,8 @@ favTab.addEventListener("click", async () => {
     musicView = "fav";
     favChecked = false;
     renderMusic(); /* 先显示全部收藏 */
-    favPlayable = await filterPlayable(getFavs()); /* 再后台筛掉无版权的 */
+    const r = await filterPlayable(getFavs()); /* 再后台筛掉无版权的 */
+    favPlayable = r.list;
     favChecked = true;
     if (musicView === "fav") renderMusic();
   }
@@ -805,7 +813,7 @@ function dayKey() {
   dailyKeyword = DAILY_KEYWORDS[dayKey() % DAILY_KEYWORDS.length];
   try {
     const c = JSON.parse(localStorage.getItem(DAILY_CACHE_KEY));
-    if (c && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
+    if (c && c.v === 2 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
       dailyList = c.list;
       dailyOffset = c.off || 0;
       renderMusic();
