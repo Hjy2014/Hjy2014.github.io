@@ -574,7 +574,7 @@ function renderMusic() {
   dailyRefresh.hidden = musicView !== "home";
   musicPager.hidden = musicView !== "search";
   if (musicView === "home") {
-    musicCaption.textContent = `🔥 今日推荐 · 网易云${dailyChart.name}`;
+    musicCaption.textContent = "🔥 今日推荐";
   } else if (musicView === "search") {
     musicCaption.textContent = `🔍 “${searchKw}” 的搜索结果`;
     const entry = searchCache[searchKw] && searchCache[searchKw][searchPage];
