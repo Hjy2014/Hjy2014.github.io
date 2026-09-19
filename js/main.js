@@ -333,6 +333,8 @@ const npNext = document.getElementById("npNext");
 const npVol = document.getElementById("npVol");
 const npVolPop = document.getElementById("npVolPop");
 const npVolBar = document.getElementById("npVolBar");
+const npRate = document.getElementById("npRate");
+const npRatePop = document.getElementById("npRatePop");
 
 /* ---- 状态 ---- */
 let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 | hist=历史记录 */
@@ -1249,7 +1251,7 @@ function openNowPlaying() {
   if (npArt.dataset.tid !== String(t.id)) { npLines = []; npFillTrack(t); }
   else npFollowLyric();
 }
-function closeNowPlaying() { npMask.hidden = true; npVolPop.hidden = true; }
+function closeNowPlaying() { npMask.hidden = true; npVolPop.hidden = true; npRatePop.hidden = true; }
 
 npClose.addEventListener("click", closeNowPlaying);
 plMax.addEventListener("click", openNowPlaying); /* 悬浮窗 □ 最大化键 → 播放详情页 */
@@ -1313,6 +1315,37 @@ npVolBar.addEventListener("input", () => applyVolume(+npVolBar.value / 100));
 document.addEventListener("click", (e) => {
   if (npVolPop.hidden) return;
   if (!e.target.closest(".np-volwrap")) npVolPop.hidden = true;  /* 点外面收起 */
+});
+
+/* 倍速播放：0.5x ~ 3x，选中的档位高亮，倍速会记住（切歌也保持） */
+function applyRate(r) {
+  r = Math.max(0.5, Math.min(3, r));
+  musicAudio.playbackRate = r;
+  try { localStorage.setItem("hjy_rate", String(r)); } catch (e) { /* 忽略 */ }
+  npRate.textContent = r + "x";
+  npRate.classList.toggle("active", r !== 1);   /* 非 1 倍速时按钮高亮提醒 */
+  npRatePop.querySelectorAll("button").forEach((b) =>
+    b.classList.toggle("on", parseFloat(b.dataset.rate) === r));
+}
+try {
+  const sr = parseFloat(localStorage.getItem("hjy_rate"));
+  if (isFinite(sr) && sr >= 0.5 && sr <= 3) musicAudio.playbackRate = sr;
+} catch (e) { /* 默认 1x */ }
+applyRate(musicAudio.playbackRate || 1);
+npRate.addEventListener("click", (e) => {
+  e.stopPropagation();
+  npRatePop.hidden = !npRatePop.hidden;
+  npVolPop.hidden = true;                       /* 两个弹出菜单互斥 */
+});
+npRatePop.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-rate]");
+  if (!b) return;
+  applyRate(parseFloat(b.dataset.rate));
+  npRatePop.hidden = true;
+});
+document.addEventListener("click", (e) => {
+  if (npRatePop.hidden) return;
+  if (!e.target.closest(".np-ratewrap")) npRatePop.hidden = true;  /* 点外面收起 */
 });
 
 plFav.addEventListener("click", () => {
