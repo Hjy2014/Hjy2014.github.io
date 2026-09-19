@@ -295,6 +295,7 @@ const pagePrev = document.getElementById("pagePrev");
 const pageNext = document.getElementById("pageNext");
 const pageInfo = document.getElementById("pageInfo");
 const dailyRefresh = document.getElementById("dailyRefresh");
+const loadHint = document.getElementById("loadHint"); /* 「音乐加载可能有些慢」提示：只在点换一批后出现 */
 
 const playerBar = document.getElementById("playerBar");
 const plArt = document.getElementById("plArt");
@@ -609,6 +610,7 @@ function renderMusic() {
   musicGrid.classList.toggle("selecting", musicView === "hist" && histSelMode);
 
   dailyRefresh.hidden = musicView !== "home";
+  if (musicView !== "home") loadHint.hidden = true; /* 离开每日推荐页就把等待提示收掉 */
   musicPager.hidden = musicView !== "search";
   if (musicView === "home") {
     musicCaption.textContent = "🔥 今日推荐";
@@ -692,7 +694,7 @@ async function loadDaily(offset) {
     const raw = chart.slice(offset, offset + PAGE_SIZE);
     /* 榜单片段一到就先显示（已带封面），版权过滤在后台继续 */
     dailyList = raw;
-    if (musicView === "home") { renderMusic(); musicStatus.textContent = "正在过滤无版权歌曲…"; }
+    if (musicView === "home") { renderMusic(); loadHint.hidden = true; /* 新音乐已出来，收掉等待提示 */ musicStatus.textContent = "正在过滤无版权歌曲…"; }
     const r = await filterPlayable(raw);
     dailyList = r.list;
     if (musicView === "home") {
@@ -709,6 +711,7 @@ async function loadDaily(offset) {
     /* 失败时恢复旧列表显示（否则网格空白），并提示 */
     if (musicView === "home") {
       renderMusic();
+      loadHint.hidden = true; /* 等待已结束（没等到新歌），收掉提示换失败文案 */
       musicStatus.textContent = "推荐获取失败，点「换一批」再试试～";
     }
     return false;
@@ -1129,6 +1132,7 @@ pagePrev.addEventListener("click", () => { if (searchPage > 1) gotoSearchPage(se
 pageNext.addEventListener("click", () => gotoSearchPage(searchPage + 1));
 dailyRefresh.addEventListener("click", () => {
   /* 在当前榜单总曲数内循环分批 */
+  loadHint.hidden = false; /* 换一批需要等网络，先亮出等待提示，新音乐出来后再收掉 */
   loadDaily((dailyOffset + PAGE_SIZE) % (Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE));
 });
 
