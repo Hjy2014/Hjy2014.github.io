@@ -385,7 +385,6 @@ a { color: inherit; text-decoration: none; }
 /* 标题行（今日推荐 / 搜索结果 / 我的收藏） */
 /* 历史记录工具：选择 / 清空 */
 .hist-tools { display: flex; gap: 8px; align-items: center; }
-.hist-trash { padding-left: 12px; padding-right: 12px; }
 .hist-trash:hover { color: #ef4444; border-color: #ef4444; }
 .music-refresh.danger { background: #ef4444; border-color: #ef4444; color: #fff; }
 /* 选择模式：卡片可点选 */
@@ -556,3 +555,26 @@ a { color: inherit; text-decoration: none; }
   .section { padding: 72px 0; }
   .skills-grid { grid-template-columns: 1fr; }
 }
+
+/* ============ 确认弹窗（清空历史 / 清理所选歌曲） ============ */
+.ask-mask {
+  position: fixed; inset: 0; z-index: 2100;
+  background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.ask-box {
+  width: 100%; max-width: 320px; background: #fff; border-radius: 20px;
+  padding: 28px 24px 22px; text-align: center;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.3);
+  animation: modalIn 0.25s ease;
+}
+.ask-text { font-size: 1rem; color: #0f172a; margin: 0 0 20px; line-height: 1.6; }
+.ask-btns { display: flex; gap: 12px; }
+.ask-btn {
+  flex: 1; padding: 10px 0; border-radius: 999px; font: inherit; font-size: 0.92rem;
+  cursor: pointer; transition: all 0.2s;
+  border: 1.5px solid #e2e8f0; background: #f8fafc; color: #475569;
+}
+.ask-btn:hover { border-color: #cbd5e1; color: #0f172a; }
+.ask-ok { background: #ef4444; border-color: #ef4444; color: #fff; }
+.ask-ok:hover { background: #dc2626; border-color: #dc2626; color: #fff; }
