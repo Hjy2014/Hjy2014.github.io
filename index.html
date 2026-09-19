@@ -130,10 +130,15 @@
           <input id="musicInput" type="text" placeholder="搜索歌曲、歌手或专辑…" />
           <button class="btn btn-primary music-search-btn" id="musicSearchBtn">搜索</button>
           <button class="music-favtab" id="favTab">❤️ 我的收藏<span id="favCount"></span></button>
+          <button class="music-favtab" id="histTab">🕐 历史</button>
         </div>
         <p class="music-hint">🎵 完整版播放（数据来自网易云音乐）· 点 🤍 收藏喜欢的歌 · 无版权歌曲已自动过滤</p>
         <div class="music-caption">
           <span id="musicCaption">🔥 今日推荐</span>
+          <span class="hist-tools" id="histTools" hidden>
+            <button class="music-refresh" id="histSelect">选择</button>
+            <button class="music-refresh hist-trash" id="histClear" title="清空全部历史">🗑</button>
+          </span>
           <button class="music-refresh" id="dailyRefresh">🔄 换一批</button>
         </div>
         <div class="music-status" id="musicStatus"></div>
@@ -143,6 +148,7 @@
           <span id="pageInfo">第 1 页</span>
           <button id="pageNext">下一页 ›</button>
         </div>
+        <p class="music-hint music-hint2">⏳ 音乐加载可能会有些慢，请耐心等待（大约 30 秒 - 1 分钟）</p>
       </div>
     </div>
   </section>
