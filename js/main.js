@@ -66,9 +66,10 @@ function smoothScrollTo(target) {
   function frame(now) {
     const p = Math.min((now - start) / duration, 1);
     const ease = 1 - Math.pow(1 - p, 3);
-    /* 每帧用元素当前位置重新算目标，自动校正布局变化 */
+    /* 每帧用元素当前位置重新算目标，自动校正布局变化；
+       behavior instant 避免与浏览器自带平滑滚动叠加导致蠕动 */
     const goal = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
-    window.scrollTo(0, startY + (goal - startY) * ease);
+    window.scrollTo({ top: startY + (goal - startY) * ease, behavior: "instant" });
     if (p < 1) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

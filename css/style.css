@@ -16,7 +16,7 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html { scroll-behavior: auto; } /* 平滑滚动由 JS 控制，避免双重动画 */
 /* 锚点定位预留固定导航栏高度，避免目标区块顶部被遮挡 */
 section[id] { scroll-margin-top: 84px; }
 
