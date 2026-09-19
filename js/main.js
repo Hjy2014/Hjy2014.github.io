@@ -682,9 +682,33 @@ async function fetchChart(pid) {
   return list;
 }
 
+/* 后台预取：当前批还在看/听时，提前把下一批和下下一批拉好并过滤好（换页时秒出更顺滑） */
+const dailyPrefetch = {};          /* offset → 已过滤好的列表；null = 已排队/进行中 */
+let prefetchChain = Promise.resolve(); /* 预取串行执行，避免抢占正在播放歌曲的带宽 */
+function schedulePrefetch(offset) {
+  const total = Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE;
+  if (!total) return;
+  for (let k = 1; k <= 2; k++) {
+    const off = (offset + k * PAGE_SIZE) % total; /* 与「换一批」相同的循环取模 */
+    if (dailyPrefetch[off] !== undefined) continue; /* 已排队或已就绪 */
+    dailyPrefetch[off] = null;
+    prefetchChain = prefetchChain.then(async () => {
+      try {
+        const chart = await fetchChart(dailyChart.id);
+        dailyChartLen = chart.length;
+        const raw = chart.slice(off, off + PAGE_SIZE);
+        if (!raw.length) { delete dailyPrefetch[off]; return; } /* 越界空批，标记失效 */
+        const r = await filterPlayable(raw);
+        dailyPrefetch[off] = r.list; /* 完成；空列表也存，连播跳批逻辑会处理 */
+      } catch (e) { delete dailyPrefetch[off]; /* 失败允许下次重试 */ }
+    });
+  }
+}
+
 async function loadDaily(offset) {
   dailyOffset = offset;
-  if (musicView === "home") { /* 自动连播时用户可能切到别的页面，别污染那边的状态栏 */
+  const instant = Array.isArray(dailyPrefetch[offset]); /* 预取已就绪：免加载秒出 */
+  if (musicView === "home" && !instant) { /* 自动连播时用户可能切到别的页面，别污染那边的状态栏 */
     musicStatus.textContent = `正在获取网易云${dailyChart.name}…`;
     musicGrid.innerHTML = "";
   }
@@ -692,13 +716,19 @@ async function loadDaily(offset) {
     const chart = await fetchChart(dailyChart.id);
     dailyChartLen = chart.length;
     const raw = chart.slice(offset, offset + PAGE_SIZE);
-    /* 榜单片段一到就先显示（已带封面），版权过滤在后台继续 */
-    dailyList = raw;
-    if (musicView === "home") { renderMusic(); loadHint.hidden = true; /* 新音乐已出来，收掉等待提示 */ musicStatus.textContent = "正在过滤无版权歌曲…"; }
-    const r = await filterPlayable(raw);
+    let r;
+    if (instant) {
+      r = { list: dailyPrefetch[offset], checked: true }; /* 预取结果本身就是过滤过的 */
+    } else {
+      /* 榜单片段一到就先显示（已带封面），版权过滤在后台继续 */
+      dailyList = raw;
+      if (musicView === "home") { renderMusic(); loadHint.hidden = true; /* 新音乐已出来，收掉等待提示 */ musicStatus.textContent = "正在过滤无版权歌曲…"; }
+      r = await filterPlayable(raw);
+    }
     dailyList = r.list;
     if (musicView === "home") {
       renderMusic();
+      loadHint.hidden = true;
       if (!r.list.length) musicStatus.textContent = "这一批没有可播放的歌曲，点「换一批」试试吧～";
     }
     if (r.checked) { /* 只有确认过滤过的列表才值得缓存（v=缓存格式版本） */
@@ -706,6 +736,7 @@ async function loadDaily(offset) {
         localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 4, day: dayKey(), off: offset, list: dailyList }));
       } catch (e) { /* 忽略存储失败 */ }
     }
+    schedulePrefetch(offset); /* 本批就位后，后台预取下一批和下下一批 */
     return true;
   } catch (e) {
     /* 失败时恢复旧列表显示（否则网格空白），并提示 */
@@ -1189,6 +1220,7 @@ function dayKey() {
       dailyList = c.list;
       dailyOffset = c.off || 0;
       renderMusic();
+      schedulePrefetch(dailyOffset); /* 首屏就用缓存：后台预取下一批和下下一批 */
       return; /* 命中今日缓存，不再请求网络 */
     }
   } catch (e) { /* 缓存坏了就走网络 */ }
