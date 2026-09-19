@@ -477,6 +477,7 @@ a { color: inherit; text-decoration: none; }
   background: var(--bg); color: var(--text-muted); cursor: pointer; flex: none;
 }
 .pl-close:hover { color: var(--text); }
+#plClose:hover { color: #ef4444; } /* 关闭键悬停提示危险操作 */
 
 /* 最小化后的小球：贴屏幕最左侧（手机/电脑一致），点一下还原 */
 .player-mini {
