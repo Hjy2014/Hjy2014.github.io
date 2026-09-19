@@ -43,6 +43,7 @@
         这里是我的数字小天地，记录我的作品与成长。
       </p>
       <div class="hero-actions">
+        <a class="btn btn-ghost" href="#music">🎵 听音乐</a>
         <a class="btn btn-primary" href="#projects">查看作品</a>
         <a class="btn btn-ghost" href="#contact">联系我</a>
       </div>
@@ -196,12 +197,13 @@
   <!-- 悬浮播放窗（可拖动） -->
   <div class="player-float" id="playerBar" hidden>
     <div class="pf-head">
-      <img class="pf-art" id="plArt" alt="" />
+      <img class="pf-art" id="plArt" alt="" referrerpolicy="no-referrer"
+           onerror="pfImgFallback(this)" />
       <div class="pl-info">
         <p class="pl-name" id="plName"></p>
         <p class="pl-artist" id="plArtist"></p>
       </div>
-      <button class="pl-close" id="plClose" aria-label="关闭播放器">✕</button>
+      <button class="pl-close" id="plMin" aria-label="最小化播放器" title="最小化到屏幕左侧">−</button>
     </div>
     <div class="pl-progress">
       <span class="pl-time" id="plCur">0:00</span>
@@ -216,6 +218,9 @@
     </div>
     <div class="pf-resize" id="pfResize" aria-label="调整大小" title="拖动调整大小"></div>
   </div>
+
+  <!-- 最小化后的小球（贴屏幕最左侧） -->
+  <button class="player-mini" id="playerMini" hidden aria-label="展开播放器" title="点我展开播放器">🎵</button>
 
   <script src="js/main.js"></script>
 </body>
