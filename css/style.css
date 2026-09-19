@@ -475,6 +475,25 @@ a { color: inherit; text-decoration: none; }
 }
 .pl-close:hover { color: var(--text); }
 
+/* 最小化后的小球：贴屏幕最左侧（手机/电脑一致），点一下还原 */
+.player-mini {
+  position: fixed; left: 0; top: 50%; z-index: 300;
+  transform: translateY(-50%);
+  width: 40px; height: 52px;
+  border: 1px solid var(--border); border-left: none;
+  border-radius: 0 14px 14px 0;
+  background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(16px);
+  box-shadow: 4px 6px 18px rgba(15, 23, 42, 0.18);
+  font-size: 1.3rem; cursor: pointer;
+  animation: miniIn 0.25s ease;
+}
+@keyframes miniIn { from { opacity: 0; transform: translate(-100%, -50%); } }
+.player-mini:hover { background: var(--primary-soft); }
+
+@media (max-width: 640px) {
+  .player-mini { width: 34px; height: 46px; font-size: 1.15rem; }
+}
+
 /* ============ 联系 ============ */
 .contact-inner { text-align: center; }
 .contact-desc { color: var(--text-muted); margin-bottom: 32px; }
