@@ -250,7 +250,13 @@ const PLAYER_SCALE_KEY = "hjy_player_scale";
 const PAGE_SIZE = 30; /* 每页歌曲数 */
 
 const NE_BASE = "https://music.163.com/api";
-const PROXY = "https://api.allorigins.win/raw?url=";
+/* 多个公共 CORS 代理轮询兜底，哪个能用就记住优先用哪个 */
+const PROXIES = [
+  (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
+  (u) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+  (u) => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), /* 返回包了一层 */
+];
+let goodProxy = 0;
 
 const musicGrid = document.getElementById("musicGrid");
 const musicStatus = document.getElementById("musicStatus");
@@ -276,7 +282,8 @@ const plSeek = document.getElementById("plSeek");
 const plCur = document.getElementById("plCur");
 const plDur = document.getElementById("plDur");
 const plFav = document.getElementById("plFav");
-const plClose = document.getElementById("plClose");
+const plMin = document.getElementById("plMin");
+const playerMini = document.getElementById("playerMini");
 const pfResize = document.getElementById("pfResize");
 
 /* ---- 状态 ---- */
@@ -319,12 +326,40 @@ function fmt(sec) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
-/* ---- 网易云接口（经 CORS 代理） ---- */
-async function neteaseGet(pathAndQuery) {
-  const res = await fetch(PROXY + encodeURIComponent(NE_BASE + pathAndQuery));
-  if (!res.ok) throw new Error("proxy " + res.status);
-  return res.json();
+/* ---- 网易云接口（依次尝试多个 CORS 代理，12 秒超时） ---- */
+function fetchTimeout(url, ms) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
+
+async function neteaseGet(pathAndQuery) {
+  const target = NE_BASE + pathAndQuery;
+  let lastErr = null;
+  for (let i = 0; i < PROXIES.length; i++) {
+    const idx = (goodProxy + i) % PROXIES.length;
+    try {
+      const res = await fetchTimeout(PROXIES[idx](target), 12000);
+      if (!res.ok) throw new Error("proxy " + res.status);
+      let text = await res.text();
+      /* allorigins /get 变体返回 {"contents": "..."} 包装，需要拆开 */
+      if (text.charAt(0) === "{" && text.indexOf('"contents"') === 1) {
+        text = JSON.parse(text).contents;
+      }
+      const data = JSON.parse(text);
+      goodProxy = idx; /* 记住成功的代理，下次优先 */
+      return data;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("所有代理都失败了");
+}
+
+/* 图片加载失败时自动改走代理重试一次（网易云图床偶发被墙/防盗链） */
+window.pfImgFallback = function (img) {
+  if (img.dataset.fb) { img.style.visibility = "hidden"; return; }
+  img.dataset.fb = "1";
+  img.src = PROXIES[0](img.src);
+};
 
 async function fetchTracks(term, offset) {
   const data = await neteaseGet(
@@ -336,7 +371,9 @@ async function fetchTracks(term, offset) {
     name: s.name,
     artist: (s.artists || []).map((a) => a.name).join(" / "),
     album: (s.album && s.album.name) || "",
-    art: ((s.album && s.album.picUrl) || "").replace("http://", "https://"),
+    art: ((s.album && s.album.picUrl) || "")
+      .replace("http://", "https://")
+      + (s.album && s.album.picUrl && !s.album.picUrl.includes("?") ? "?param=240y240" : ""),
   }));
 }
 
@@ -355,7 +392,7 @@ function trackCard(t) {
   return `
   <div class="music-card ${isCur ? "playing" : ""}" data-id="${t.id}">
     <div class="music-art-wrap">
-      <img class="music-art" src="${esc(t.art)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'" />
+      <img class="music-art" src="${esc(t.art)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="pfImgFallback(this)" />
       <button class="music-fav" data-act="fav" aria-label="收藏">${fav ? "❤️" : "🤍"}</button>
       <button class="music-play" data-act="play" aria-label="播放">${isCur && !musicAudio.paused ? "⏸" : "▶"}</button>
     </div>
@@ -457,8 +494,11 @@ function savePlayerScale() {
 
 function showPlayer(t) {
   playerBar.hidden = false;
-  if (t.art) { plArt.src = t.art; plArt.style.visibility = "visible"; }
-  else plArt.style.visibility = "hidden";
+  if (t.art) {
+    plArt.dataset.fb = ""; /* 新歌重新允许兜底重试 */
+    plArt.style.visibility = "visible";
+    plArt.src = t.art;
+  } else plArt.style.visibility = "hidden";
   plName.textContent = t.name;
   plName.title = t.name;
   plArtist.textContent = "加载中…";
@@ -586,14 +626,15 @@ async function playTrack(list, idx) {
 function playNext() { if (queue.length) playTrack(queue, queueIdx + 1); }
 function playPrev() { if (queue.length) playTrack(queue, queueIdx - 1); }
 
-function closePlayer() {
-  playSeq++;
-  musicAudio.pause();
-  musicAudio.removeAttribute("src");
-  queue = []; queueIdx = -1;
+/* 最小化：收起悬浮窗，变成贴屏幕最左侧的小球，音乐继续播放 */
+function minimizePlayer() {
   playerBar.hidden = true;
-  refreshPlaying();
+  playerMini.hidden = false;
 }
+playerMini.addEventListener("click", () => {
+  playerMini.hidden = true;
+  playerBar.hidden = false;
+});
 
 /* 播放器事件 */
 plToggle.addEventListener("click", () => {
@@ -604,7 +645,7 @@ plToggle.addEventListener("click", () => {
 });
 plNext.addEventListener("click", playNext);
 plPrev.addEventListener("click", playPrev);
-plClose.addEventListener("click", closePlayer);
+plMin.addEventListener("click", minimizePlayer);
 
 musicAudio.addEventListener("ended", playNext);
 musicAudio.addEventListener("play", refreshPlaying);
