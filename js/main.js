@@ -316,6 +316,21 @@ const askMask = document.getElementById("askMask");
 const askText = document.getElementById("askText");
 const askOk = document.getElementById("askOk");
 const askCancel = document.getElementById("askCancel");
+const npMask = document.getElementById("npMask");
+const npClose = document.getElementById("npClose");
+const npArt = document.getElementById("npArt");
+const npName = document.getElementById("npName");
+const npArtist = document.getElementById("npArtist");
+const npLyrics = document.getElementById("npLyrics");
+const npCur = document.getElementById("npCur");
+const npDur = document.getElementById("npDur");
+const npSeek = document.getElementById("npSeek");
+const npPrev = document.getElementById("npPrev");
+const npToggle = document.getElementById("npToggle");
+const npNext = document.getElementById("npNext");
+const npVol = document.getElementById("npVol");
+const npVolPop = document.getElementById("npVolPop");
+const npVolBar = document.getElementById("npVolBar");
 
 /* ---- 状态 ---- */
 let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 | hist=历史记录 */
@@ -831,6 +846,8 @@ function showPlayer(t) {
     applyPlayerScale();
     placePlayer();
   }
+  /* 详情页开着时切歌：同步封面/歌名/歌词 */
+  if (!npMask.hidden && npArt.dataset.tid !== String(t.id)) { npLines = []; npFillTrack(t); }
 }
 
 /* 把窗口约束回视口内（拖动/缩放后都要保证可见） */
@@ -878,9 +895,20 @@ playerBar.addEventListener("pointermove", (e) => {
   playerBar.style.top = (e.clientY - dragState.dy) + "px";
   clampPlayer();
 });
-function endDrag() {
+/* 双击（快速两次轻点、位移很小）悬浮窗空白处 → 打开播放详情页 */
+let lastTapT = 0, lastTapXY = null;
+function endDrag(e) {
   if (!dragState) return;
   dragState = null;
+  const now = Date.now();
+  const near = lastTapXY && e &&
+    Math.abs(e.clientX - lastTapXY.x) < 26 && Math.abs(e.clientY - lastTapXY.y) < 26;
+  if (now - lastTapT < 420 && near) {
+    lastTapT = 0; lastTapXY = null;
+    if (!npMask.hidden) closeNowPlaying(); else openNowPlaying();
+  } else {
+    lastTapT = now; lastTapXY = e ? { x: e.clientX, y: e.clientY } : null;
+  }
   localStorage.setItem(PLAYER_POS_KEY, JSON.stringify({
     x: parseInt(playerBar.style.left, 10),
     y: parseInt(playerBar.style.top, 10),
@@ -917,6 +945,7 @@ pfResize.addEventListener("pointercancel", endResize);
 function refreshPlaying() {
   const cur = queue[queueIdx];
   plToggle.textContent = cur && !musicAudio.paused ? "⏸" : "▶";
+  npToggle.textContent = plToggle.textContent; /* 详情页播放键同步 */
   document.querySelectorAll(".music-card").forEach((card) => {
     const on = cur && String(cur.id) === card.dataset.id && !musicAudio.paused;
     card.classList.toggle("playing", on);
@@ -1062,13 +1091,182 @@ musicAudio.addEventListener("error", async () => {
 musicAudio.addEventListener("loadedmetadata", () => {
   plDur.textContent = fmt(musicAudio.duration);
   plSeek.max = Math.floor(musicAudio.duration) || 30;
+  npDur.textContent = plDur.textContent;       /* 详情页时长同步 */
+  npSeek.max = plSeek.max;
 });
 musicAudio.addEventListener("timeupdate", () => {
   plCur.textContent = fmt(musicAudio.currentTime);
   plSeek.value = Math.floor(musicAudio.currentTime);
+  if (!npMask.hidden) { npSyncTime(); npFollowLyric(); } /* 详情页开着：同步进度与歌词高亮 */
 });
 plSeek.addEventListener("input", () => {
   if (isFinite(musicAudio.duration)) musicAudio.currentTime = +plSeek.value;
+});
+
+/* ---- 播放详情页：双击悬浮窗空白处打开（左封面 / 右歌名+滚动歌词 / 进度条 / 控制键 / 音量） ---- */
+const npLrcCache = {};   /* 歌曲id → 已解析歌词 [{t,text}]；null = 确认无歌词 */
+let npLines = [];        /* 详情页当前展示的歌词行 */
+let npLrcIdx = -1;       /* 当前高亮行 */
+let npUserScroll = 0;    /* 用户手动滚动的时刻；3 秒内暂停自动跟随 */
+let npLrcReq = 0;        /* 歌词请求序号，防止慢响应串台 */
+
+function npSyncTime() {
+  npCur.textContent = fmt(musicAudio.currentTime || 0);
+  npDur.textContent = fmt(musicAudio.duration || 0);
+  if (isFinite(musicAudio.duration) && musicAudio.duration > 0) {
+    npSeek.max = Math.floor(musicAudio.duration);
+    if (document.activeElement !== npSeek) npSeek.value = Math.floor(musicAudio.currentTime || 0);
+  }
+}
+
+function parseLrc(text) {
+  const out = [];
+  for (const line of String(text).split("\n")) {
+    const times = [...line.matchAll(/\[(\d{1,2}):(\d{1,2})(?:[.:](\d{1,3}))?\]/g)];
+    if (!times.length) continue;
+    const words = line.replace(/\[[^\]]*\]/g, "").trim();
+    if (!words) continue;
+    for (const m of times) {
+      out.push({ t: (+m[1]) * 60 + (+m[2]) + (m[3] ? +("0." + m[3]) : 0), text: words });
+    }
+  }
+  out.sort((a, b) => a.t - b.t);
+  return out;
+}
+
+/* 歌词主通道：网易云代理；兜底：Meting 直连 LRC 文本 */
+async function fetchLyrics(id) {
+  try {
+    const data = await neteaseGet("/song/lyric?id=" + id + "&lv=1&tv=-1");
+    const raw = data && data.lrc && data.lrc.lyric;
+    if (raw && raw.trim()) {
+      const lines = parseLrc(raw);
+      if (lines.length) return lines;
+    }
+  } catch (e) { /* 代理全挂 → Meting 兜底 */ }
+  const r = await fetchTimeout("https://api.injahow.cn/meting/?type=lrc&id=" + id, 9000);
+  if (!r.ok) throw new Error("lrc " + r.status);
+  const lines = parseLrc(await r.text());
+  if (!lines.length) throw new Error("empty lrc");
+  return lines;
+}
+
+function renderLyrics(lines) {
+  npLyrics.innerHTML = lines.length
+    ? lines.map((l, i) => `<p data-i="${i}">${esc(l.text)}</p>`).join("")
+    : '<p class="np-hint">这首是纯音乐，没有歌词哦～</p>';
+  npLrcIdx = -1;
+  npLyrics.scrollTop = 0;
+}
+
+async function loadLyricsInto(id) {
+  const seq = ++npLrcReq;
+  npLines = []; npLrcIdx = -1;
+  npLyrics.innerHTML = '<p class="np-hint">歌词加载中…</p>';
+  if (npLrcCache[id] !== undefined) {          /* 取过（含确认无歌词），直接用 */
+    npLines = npLrcCache[id] || [];
+    renderLyrics(npLines);
+    npFollowLyric();
+    return;
+  }
+  try {
+    const lines = await fetchLyrics(id);
+    if (seq !== npLrcReq) return;              /* 已切到别的歌 */
+    npLrcCache[id] = lines;
+    npLines = lines;
+    renderLyrics(lines);
+    npFollowLyric();
+  } catch (e) {
+    if (seq !== npLrcReq) return;
+    npLrcCache[id] = null;
+    npLines = [];
+    npLyrics.innerHTML = '<p class="np-hint">暂时拿不到这首歌词～</p>';
+  }
+}
+
+/* 高亮当前句并滚动到歌词区中间（用户手动滚动后 3 秒内不抢滚动条） */
+function npFollowLyric() {
+  if (npMask.hidden || !npLines.length) return;
+  const t = musicAudio.currentTime || 0;
+  let idx = -1;
+  for (let i = 0; i < npLines.length; i++) { if (npLines[i].t <= t + 0.25) idx = i; else break; }
+  if (idx === npLrcIdx) return;
+  npLrcIdx = idx;
+  const ps = npLyrics.querySelectorAll("p[data-i]");
+  ps.forEach((p) => p.classList.toggle("on", +p.dataset.i === idx));
+  if (idx >= 0 && ps[idx] && Date.now() - npUserScroll > 3000) {
+    const el = ps[idx];
+    npLyrics.scrollTo({ top: el.offsetTop - npLyrics.clientHeight / 2 + el.clientHeight / 2, behavior: "smooth" });
+  }
+}
+
+function npFillTrack(t) {
+  npArt.dataset.tid = String(t.id);
+  if (t.art) { npArt.dataset.fb = ""; npArt.style.visibility = "visible"; npArt.src = t.art; }
+  else npArt.style.visibility = "hidden";
+  npName.textContent = t.name;
+  npName.title = t.name;
+  npArtist.textContent = t.artist || "";
+  loadLyricsInto(t.id);
+}
+
+function openNowPlaying() {
+  const t = queue[queueIdx];
+  if (!t) return;                              /* 还没播过歌，不打开 */
+  npMask.hidden = false;
+  npSyncTime();
+  if (npArt.dataset.tid !== String(t.id)) { npLines = []; npFillTrack(t); }
+  else npFollowLyric();
+}
+function closeNowPlaying() { npMask.hidden = true; npVolPop.hidden = true; }
+
+npClose.addEventListener("click", closeNowPlaying);
+npPrev.addEventListener("click", playPrev);
+npNext.addEventListener("click", playNext);
+npToggle.addEventListener("click", () => {
+  if (!queue.length) return;
+  if (musicAudio.paused) musicAudio.play().catch(() => {});
+  else musicAudio.pause();
+  refreshPlaying();
+});
+npSeek.addEventListener("input", () => {
+  if (isFinite(musicAudio.duration)) musicAudio.currentTime = +npSeek.value;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !npMask.hidden) closeNowPlaying(); });
+
+/* 点歌词任意句 → 跳到那句开始播 */
+npLyrics.addEventListener("click", (e) => {
+  const p = e.target.closest("p[data-i]");
+  if (!p || !npLines.length) return;
+  const line = npLines[+p.dataset.i];
+  if (line && isFinite(musicAudio.duration)) {
+    musicAudio.currentTime = Math.max(0, line.t - 0.2);
+    npFollowLyric();
+  }
+});
+
+/* 用户手动滚动歌词 → 暂时关掉自动跟随 */
+["wheel", "touchmove"].forEach((ev) =>
+  npLyrics.addEventListener(ev, () => { npUserScroll = Date.now(); }, { passive: true }));
+
+/* 音量：点键弹出滑条，拖动调整并记忆；音量 0 时显示静音图标 */
+function applyVolume(v) {
+  musicAudio.volume = Math.max(0, Math.min(1, v));
+  npVolBar.value = Math.round(musicAudio.volume * 100);
+  npVol.textContent = musicAudio.volume > 0 ? "🔊" : "🔇";
+  try { localStorage.setItem("hjy_volume", String(musicAudio.volume)); } catch (e) { /* 忽略 */ }
+}
+try {
+  const sv = parseFloat(localStorage.getItem("hjy_volume"));
+  if (isFinite(sv)) musicAudio.volume = Math.max(0, Math.min(1, sv));
+} catch (e) { /* 默认 1 */ }
+npVolBar.value = Math.round(musicAudio.volume * 100);
+npVol.textContent = musicAudio.volume > 0 ? "🔊" : "🔇";
+npVol.addEventListener("click", (e) => { e.stopPropagation(); npVolPop.hidden = !npVolPop.hidden; });
+npVolBar.addEventListener("input", () => applyVolume(+npVolBar.value / 100));
+document.addEventListener("click", (e) => {
+  if (npVolPop.hidden) return;
+  if (!e.target.closest(".np-volwrap")) npVolPop.hidden = true;  /* 点外面收起 */
 });
 
 plFav.addEventListener("click", () => {
