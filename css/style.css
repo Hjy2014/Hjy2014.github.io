@@ -313,6 +313,14 @@ a { color: inherit; text-decoration: none; }
 .contact-desc { color: var(--text-muted); margin-bottom: 32px; }
 .contact-links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 .gh-icon { width: 1.15em; height: 1.15em; margin-right: 8px; vertical-align: -0.18em; }
+.visit-count {
+  margin-top: 28px; text-align: center;
+  color: var(--text-muted, #64748b); font-size: 0.95rem;
+}
+.visit-count b {
+  color: var(--primary, #2563eb); font-size: 1.2em; font-weight: 800;
+  padding: 0 2px;
+}
 
 /* ============ 页脚 ============ */
 .footer { border-top: 1px solid var(--border); padding: 28px 0; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
