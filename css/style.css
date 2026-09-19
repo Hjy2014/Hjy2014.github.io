@@ -636,6 +636,22 @@ a { color: inherit; text-decoration: none; }
 .np-btn.np-toggle { width: 56px; height: 56px; font-size: 1.3rem; background: var(--primary, #2563eb); border-color: var(--primary, #2563eb); color: #fff; }
 .np-btn.np-toggle:hover { filter: brightness(1.1); }
 .np-volwrap { position: absolute; right: 0; }
+.np-ratewrap { position: absolute; left: 0; }
+.np-rate { font-size: 0.85rem !important; font-weight: 700; }
+.np-rate.active { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: #eef2ff; }
+.np-ratepop {
+  position: absolute; bottom: 52px; left: -8px; z-index: 5;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.15); padding: 8px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.np-ratepop button {
+  border: none; background: none; padding: 7px 20px; border-radius: 9px;
+  font: inherit; font-size: 0.88rem; color: #334155; cursor: pointer;
+  text-align: center; white-space: nowrap; transition: background 0.15s;
+}
+.np-ratepop button:hover { background: #f1f5f9; }
+.np-ratepop button.on { background: #eef2ff; color: var(--primary, #2563eb); font-weight: 700; }
 .np-volpop {
   position: absolute; bottom: 52px; right: 2px; z-index: 5;
   background: #fff; border: 1px solid #e2e8f0; border-radius: 999px;
@@ -653,4 +669,7 @@ a { color: inherit; text-decoration: none; }
   .np-art { width: 170px; height: 170px; }
   .np-right { width: 100%; min-height: 300px; }
   .np-lyrics { min-height: 110px; max-height: 200px; }
+  .np-controls { gap: 12px; }
+  .np-btn { width: 38px; height: 38px; font-size: 0.95rem; }
+  .np-btn.np-toggle { width: 48px; height: 48px; }
 }
