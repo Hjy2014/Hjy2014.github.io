@@ -242,8 +242,10 @@ const COUNTER_KEY = "visitors";
 
 /* ============ 音乐板块（网易云完整版播放器） ============ */
 /* 数据来源：网易云音乐公开接口（经 allorigins CORS 代理），完整版播放。
-   收藏只存歌曲信息（key: hjy_music_favs_v2），播放时再实时解析播放地址（地址会过期） */
+   搜索框在上、下方直接展示每日推荐；收藏只存歌曲信息（key: hjy_music_favs_v2），
+   播放时再实时解析播放地址（地址会过期）。播放窗为可拖动悬浮窗。 */
 const MUSIC_FAV_KEY = "hjy_music_favs_v2";
+const PLAYER_POS_KEY = "hjy_player_pos";
 const PAGE_SIZE = 30; /* 每页歌曲数 */
 
 const NE_BASE = "https://music.163.com/api";
@@ -251,11 +253,11 @@ const PROXY = "https://api.allorigins.win/raw?url=";
 
 const musicGrid = document.getElementById("musicGrid");
 const musicStatus = document.getElementById("musicStatus");
-const musicHint = document.getElementById("musicHint");
+const musicCaption = document.getElementById("musicCaption");
 const musicInput = document.getElementById("musicInput");
 const musicSearchBtn = document.getElementById("musicSearchBtn");
 const favCountEl = document.getElementById("favCount");
-const searchBar = document.getElementById("searchBar");
+const favTab = document.getElementById("favTab");
 const musicPager = document.getElementById("musicPager");
 const pagePrev = document.getElementById("pagePrev");
 const pageNext = document.getElementById("pageNext");
@@ -276,7 +278,8 @@ const plFav = document.getElementById("plFav");
 const plClose = document.getElementById("plClose");
 
 /* ---- 状态 ---- */
-let musicTab = "daily";          /* daily | search | fav */
+let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 */
+let lastView = "home";           /* 从收藏页返回时用 */
 const searchCache = {};          /* { 关键词: { 页码: 歌曲列表 } } */
 let searchKw = "", searchPage = 1;
 let dailyList = [];              /* 今日推荐列表 */
@@ -360,38 +363,36 @@ function trackCard(t) {
 }
 
 function currentList() {
-  if (musicTab === "fav") return getFavs();
-  if (musicTab === "daily") return dailyList;
+  if (musicView === "fav") return getFavs();
+  if (musicView === "home") return dailyList;
   return (searchCache[searchKw] && searchCache[searchKw][searchPage]) || [];
 }
 
 function renderMusic() {
   const favs = getFavs();
   favCountEl.textContent = favs.length ? `（${favs.length}）` : "";
+  favTab.classList.toggle("active", musicView === "fav");
+  favTab.innerHTML = musicView === "fav"
+    ? "← 返回"
+    : `❤️ 我的收藏<span id="favCount">${favs.length ? `（${favs.length}）` : ""}</span>`;
 
-  searchBar.hidden = musicTab !== "search";
-  dailyRefresh.hidden = musicTab !== "daily";
-  musicPager.hidden = musicTab !== "search";
-  if (musicTab === "daily") {
-    const d = new Date();
-    musicHint.textContent = `🎵 完整版播放 · 今天是 ${d.getMonth() + 1} 月 ${d.getDate()} 日，为你推荐「${dailyKeyword}」（每天不一样哦）`;
-  } else if (musicTab === "search") {
-    musicHint.textContent = "🎵 完整版播放（数据来自网易云音乐）· 点 🤍 收藏 · 个别歌曲因版权可能无法播放";
-  } else {
-    musicHint.textContent = "❤️ 收藏保存在本设备浏览器中，换设备不会同步。";
-  }
-
-  if (musicTab === "search") {
+  dailyRefresh.hidden = musicView !== "home";
+  musicPager.hidden = musicView !== "search";
+  if (musicView === "home") {
+    musicCaption.textContent = `✨ 今日推荐 · ${dailyKeyword}`;
+  } else if (musicView === "search") {
+    musicCaption.textContent = `🔍 “${searchKw}” 的搜索结果`;
     const pageList = (searchCache[searchKw] && searchCache[searchKw][searchPage]) || [];
     pagePrev.disabled = searchPage <= 1;
     pageNext.disabled = pageList.length < PAGE_SIZE;
     pageInfo.textContent = `第 ${searchPage} 页`;
+  } else {
+    musicCaption.textContent = "❤️ 我的收藏";
   }
 
   const list = currentList();
-  if (musicTab === "fav" && !list.length) musicStatus.textContent = "还没有收藏，去搜索一首喜欢的歌吧～";
-  else if (musicTab === "daily" && !list.length) musicStatus.textContent = "今日推荐生成中…";
-  else if (musicTab === "search" && !searchKw) musicStatus.textContent = "输入关键词，搜索你喜欢的音乐吧 🎧";
+  if (musicView === "fav" && !list.length) musicStatus.textContent = "还没有收藏，搜索一首喜欢的歌吧～";
+  else if (musicView === "home" && !list.length) musicStatus.textContent = "今日推荐生成中…";
   else musicStatus.textContent = "";
   musicGrid.innerHTML = list.map(trackCard).join("");
 }
@@ -403,7 +404,7 @@ async function loadDaily(offset) {
   musicGrid.innerHTML = "";
   try {
     dailyList = await fetchTracks(dailyKeyword, offset);
-    renderMusic();
+    if (musicView === "home") renderMusic();
   } catch (e) {
     musicStatus.textContent = "推荐获取失败，点「换一批」再试试～";
   }
@@ -413,7 +414,9 @@ async function loadDaily(offset) {
 async function searchMusic() {
   const kw = musicInput.value.trim();
   if (!kw) { musicStatus.textContent = "先输入想听的歌名或歌手吧～"; return; }
+  if (musicView !== "fav") lastView = musicView;
   searchKw = kw; searchPage = 1;
+  musicView = "search";
   await gotoSearchPage(1, true);
 }
 
@@ -435,17 +438,66 @@ async function gotoSearchPage(page, force) {
   }
 }
 
-/* ---- 播放器 ---- */
+/* ---- 悬浮播放窗 ---- */
+let playerPlaced = false;
+
 function showPlayer(t) {
   playerBar.hidden = false;
-  document.body.classList.add("player-open");
   if (t.art) { plArt.src = t.art; plArt.style.visibility = "visible"; }
   else plArt.style.visibility = "hidden";
   plName.textContent = t.name;
   plName.title = t.name;
   plArtist.textContent = "加载中…";
   plFav.textContent = isFav(t.id) ? "❤️" : "🤍";
+  if (!playerPlaced) placePlayer();
 }
+
+function placePlayer() {
+  const w = playerBar.offsetWidth, h = playerBar.offsetHeight;
+  let x = window.innerWidth - w - 20;   /* 默认右下角 */
+  let y = window.innerHeight - h - 20;
+  try {
+    const saved = JSON.parse(localStorage.getItem(PLAYER_POS_KEY));
+    if (saved && typeof saved.x === "number" && typeof saved.y === "number" &&
+        saved.x < window.innerWidth - 40 && saved.y < window.innerHeight - 40) {
+      x = saved.x; y = saved.y;
+    }
+  } catch (e) { /* 忽略坏数据 */ }
+  x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+  y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
+  playerBar.style.left = x + "px";
+  playerBar.style.top = y + "px";
+  playerPlaced = true;
+}
+
+/* 拖动：在窗口上按住即可拖（按钮/进度条除外），位置记忆 */
+let dragState = null;
+playerBar.addEventListener("pointerdown", (e) => {
+  if (e.target.closest("button, input")) return;
+  const rect = playerBar.getBoundingClientRect();
+  dragState = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+  playerBar.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+playerBar.addEventListener("pointermove", (e) => {
+  if (!dragState) return;
+  const w = playerBar.offsetWidth, h = playerBar.offsetHeight;
+  let x = e.clientX - dragState.dx, y = e.clientY - dragState.dy;
+  x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
+  y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
+  playerBar.style.left = x + "px";
+  playerBar.style.top = y + "px";
+});
+function endDrag() {
+  if (!dragState) return;
+  dragState = null;
+  localStorage.setItem(PLAYER_POS_KEY, JSON.stringify({
+    x: parseInt(playerBar.style.left, 10),
+    y: parseInt(playerBar.style.top, 10),
+  }));
+}
+playerBar.addEventListener("pointerup", endDrag);
+playerBar.addEventListener("pointercancel", endDrag);
 
 function refreshPlaying() {
   const cur = queue[queueIdx];
@@ -489,7 +541,6 @@ function closePlayer() {
   musicAudio.removeAttribute("src");
   queue = []; queueIdx = -1;
   playerBar.hidden = true;
-  document.body.classList.remove("player-open");
   refreshPlaying();
 }
 
@@ -530,14 +581,15 @@ plFav.addEventListener("click", () => {
   renderMusic();
 });
 
-/* ---- 页签切换 ---- */
-document.querySelectorAll(".music-tab").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".music-tab").forEach((b) => b.classList.remove("active"));
-    btn.classList.add("active");
-    musicTab = btn.dataset.tab;
-    renderMusic();
-  });
+/* ---- 视图切换 ---- */
+favTab.addEventListener("click", () => {
+  if (musicView === "fav") {
+    musicView = lastView || "home";
+  } else {
+    lastView = musicView;
+    musicView = "fav";
+  }
+  renderMusic();
 });
 
 /* ---- 搜索控件 ---- */
