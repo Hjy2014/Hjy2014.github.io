@@ -153,3 +153,41 @@ function openLoginModal() {
 }
 
 renderUser();
+
+/* ============ 联系方式弹窗 ============ */
+/* 以后想改联系方式，直接改下面这个数组即可 */
+const CONTACTS = [
+  { icon: "💬", name: "微信", value: "（稍后补充）" },
+  { icon: "🎵", name: "抖音", value: "（稍后补充）" },
+];
+
+const contactBtn = document.getElementById("contactInfoOpen");
+if (contactBtn) {
+  contactBtn.addEventListener("click", openContactModal);
+}
+
+function openContactModal() {
+  if (document.getElementById("contactModal")) return;
+  const mask = document.createElement("div");
+  mask.id = "contactModal";
+  mask.innerHTML = `
+    <div class="contact-card">
+      <button class="login-close" id="contactClose" aria-label="关闭">✕</button>
+      <h3>📇 我的联系方式</h3>
+      <ul class="contact-list">
+        ${CONTACTS.map(
+          (c) => `
+        <li class="contact-item">
+          <span class="ci-icon">${c.icon}</span>
+          <span class="ci-name">${c.name}</span>
+          <span class="ci-value">${c.value}</span>
+        </li>`
+        ).join("")}
+      </ul>
+      <p class="contact-tip">加好友时请备注来自网站哦～</p>
+    </div>`;
+  document.body.appendChild(mask);
+  const close = () => mask.remove();
+  mask.addEventListener("click", (e) => { if (e.target === mask) close(); });
+  mask.querySelector("#contactClose").addEventListener("click", close);
+}
