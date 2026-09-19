@@ -17,6 +17,8 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html { scroll-behavior: smooth; }
+/* 锚点定位预留固定导航栏高度，避免目标区块顶部被遮挡 */
+section[id] { scroll-margin-top: 84px; }
 
 body {
   font-family: var(--font);

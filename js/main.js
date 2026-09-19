@@ -55,6 +55,22 @@ const statObserver = new IntersectionObserver(
 );
 document.querySelectorAll(".stat b").forEach((el) => statObserver.observe(el));
 
+/* 平滑滚动到锚点（点击瞬间计算目标位置，避免评论区懒加载导致的漂移） */
+const NAV_OFFSET = 84;
+document.querySelectorAll('a[href^="#"]').forEach((a) => {
+  a.addEventListener("click", (e) => {
+    const id = a.getAttribute("href").slice(1);
+    const target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+    requestAnimationFrame(() => {
+      const top = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
+      window.scrollTo({ top: Math.max(top, 0), behavior: "smooth" });
+      history.replaceState(null, "", "#" + id);
+    });
+  });
+});
+
 /* 年份 */
 document.getElementById("year").textContent = new Date().getFullYear();
 
