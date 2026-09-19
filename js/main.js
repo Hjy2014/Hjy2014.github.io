@@ -246,6 +246,7 @@ const COUNTER_KEY = "visitors";
    播放时再实时解析播放地址（地址会过期）。播放窗为可拖动悬浮窗。 */
 const MUSIC_FAV_KEY = "hjy_music_favs_v2";
 const PLAYER_POS_KEY = "hjy_player_pos";
+const PLAYER_SCALE_KEY = "hjy_player_scale";
 const PAGE_SIZE = 30; /* 每页歌曲数 */
 
 const NE_BASE = "https://music.163.com/api";
@@ -276,6 +277,7 @@ const plCur = document.getElementById("plCur");
 const plDur = document.getElementById("plDur");
 const plFav = document.getElementById("plFav");
 const plClose = document.getElementById("plClose");
+const pfResize = document.getElementById("pfResize");
 
 /* ---- 状态 ---- */
 let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 */
@@ -440,6 +442,18 @@ async function gotoSearchPage(page, force) {
 
 /* ---- 悬浮播放窗 ---- */
 let playerPlaced = false;
+let playerScale = 1;
+try {
+  const s = parseFloat(localStorage.getItem(PLAYER_SCALE_KEY));
+  if (s >= 0.7 && s <= 2.5) playerScale = s;
+} catch (e) { /* 忽略坏数据 */ }
+
+function applyPlayerScale() {
+  playerBar.style.transform = "scale(" + playerScale + ")";
+}
+function savePlayerScale() {
+  localStorage.setItem(PLAYER_SCALE_KEY, String(playerScale));
+}
 
 function showPlayer(t) {
   playerBar.hidden = false;
@@ -449,13 +463,29 @@ function showPlayer(t) {
   plName.title = t.name;
   plArtist.textContent = "加载中…";
   plFav.textContent = isFav(t.id) ? "❤️" : "🤍";
-  if (!playerPlaced) placePlayer();
+  if (!playerPlaced) {
+    applyPlayerScale();
+    placePlayer();
+  }
+}
+
+/* 把窗口约束回视口内（拖动/缩放后都要保证可见） */
+function clampPlayer() {
+  const rect = playerBar.getBoundingClientRect();
+  let x = parseFloat(playerBar.style.left);
+  if (!isFinite(x)) x = 8;
+  let y = parseFloat(playerBar.style.top);
+  if (!isFinite(y)) y = 8;
+  x = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8));
+  y = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8));
+  playerBar.style.left = x + "px";
+  playerBar.style.top = y + "px";
 }
 
 function placePlayer() {
-  const w = playerBar.offsetWidth, h = playerBar.offsetHeight;
-  let x = window.innerWidth - w - 20;   /* 默认右下角 */
-  let y = window.innerHeight - h - 20;
+  const rect = playerBar.getBoundingClientRect(); /* 缩放后的实际尺寸 */
+  let x = window.innerWidth - rect.width - 20;    /* 默认右下角 */
+  let y = window.innerHeight - rect.height - 20;
   try {
     const saved = JSON.parse(localStorage.getItem(PLAYER_POS_KEY));
     if (saved && typeof saved.x === "number" && typeof saved.y === "number" &&
@@ -463,17 +493,16 @@ function placePlayer() {
       x = saved.x; y = saved.y;
     }
   } catch (e) { /* 忽略坏数据 */ }
-  x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
-  y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
   playerBar.style.left = x + "px";
   playerBar.style.top = y + "px";
+  clampPlayer();
   playerPlaced = true;
 }
 
 /* 拖动：在窗口上按住即可拖（按钮/进度条除外），位置记忆 */
 let dragState = null;
 playerBar.addEventListener("pointerdown", (e) => {
-  if (e.target.closest("button, input")) return;
+  if (e.target.closest("button, input, .pf-resize")) return;
   const rect = playerBar.getBoundingClientRect();
   dragState = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
   playerBar.setPointerCapture(e.pointerId);
@@ -481,12 +510,9 @@ playerBar.addEventListener("pointerdown", (e) => {
 });
 playerBar.addEventListener("pointermove", (e) => {
   if (!dragState) return;
-  const w = playerBar.offsetWidth, h = playerBar.offsetHeight;
-  let x = e.clientX - dragState.dx, y = e.clientY - dragState.dy;
-  x = Math.max(8, Math.min(x, window.innerWidth - w - 8));
-  y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
-  playerBar.style.left = x + "px";
-  playerBar.style.top = y + "px";
+  playerBar.style.left = (e.clientX - dragState.dx) + "px";
+  playerBar.style.top = (e.clientY - dragState.dy) + "px";
+  clampPlayer();
 });
 function endDrag() {
   if (!dragState) return;
@@ -498,6 +524,31 @@ function endDrag() {
 }
 playerBar.addEventListener("pointerup", endDrag);
 playerBar.addEventListener("pointercancel", endDrag);
+
+/* 缩放：按住右下角手柄拖动，放大/缩小整个播放窗（0.7x ~ 2.5x），比例记忆 */
+let resizeState = null;
+pfResize.addEventListener("pointerdown", (e) => {
+  e.stopPropagation();
+  const rect = playerBar.getBoundingClientRect();
+  resizeState = { x: e.clientX, y: e.clientY, scale: playerScale, w: rect.width, h: rect.height };
+  pfResize.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+pfResize.addEventListener("pointermove", (e) => {
+  if (!resizeState) return;
+  const rx = (e.clientX - resizeState.x + resizeState.w) / resizeState.w;
+  const ry = (e.clientY - resizeState.y + resizeState.h) / resizeState.h;
+  playerScale = Math.min(2.5, Math.max(0.7, resizeState.scale * Math.max(rx, ry)));
+  applyPlayerScale();
+  clampPlayer();
+});
+function endResize() {
+  if (!resizeState) return;
+  resizeState = null;
+  savePlayerScale();
+}
+pfResize.addEventListener("pointerup", endResize);
+pfResize.addEventListener("pointercancel", endResize);
 
 function refreshPlaying() {
   const cur = queue[queueIdx];
