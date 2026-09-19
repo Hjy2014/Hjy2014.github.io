@@ -247,13 +247,15 @@ const COUNTER_KEY = "visitors";
 const MUSIC_FAV_KEY = "hjy_music_favs_v2";
 const PLAYER_POS_KEY = "hjy_player_pos";
 const PLAYER_SCALE_KEY = "hjy_player_scale";
+const DAILY_CACHE_KEY = "hjy_daily_cache";
 const PAGE_SIZE = 30; /* 每页歌曲数 */
 
 const NE_BASE = "https://music.163.com/api";
-/* 多个公共 CORS 代理轮询兜底，哪个能用就记住优先用哪个 */
+/* 多个公共 CORS 代理兜底：请求时前两个并行竞速，哪个快用哪个；失败的通道下次自动降级 */
 const PROXIES = [
   (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   (u) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
+  (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u),
   (u) => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), /* 返回包了一层 */
 ];
 let goodProxy = 0;
@@ -283,6 +285,7 @@ const plCur = document.getElementById("plCur");
 const plDur = document.getElementById("plDur");
 const plFav = document.getElementById("plFav");
 const plMin = document.getElementById("plMin");
+const plClose = document.getElementById("plClose");
 const playerMini = document.getElementById("playerMini");
 const pfResize = document.getElementById("pfResize");
 
@@ -326,32 +329,51 @@ function fmt(sec) {
   return m + ":" + String(s).padStart(2, "0");
 }
 
-/* ---- 网易云接口（依次尝试多个 CORS 代理，12 秒超时） ---- */
+/* ---- 网易云接口（多代理并行竞速 + 超时 + 整轮重试） ---- */
 function fetchTimeout(url, ms) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
 }
 
+/* 单个代理取一次：返回解析好的 JSON，失败抛错 */
+async function tryProxy(idx, target) {
+  const res = await fetchTimeout(PROXIES[idx](target), 9000);
+  if (!res.ok) throw new Error("proxy " + res.status);
+  let text = await res.text();
+  /* allorigins /get 变体返回 {"contents": "..."} 包装，需要拆开 */
+  if (text.charAt(0) === "{" && text.indexOf('"contents"') === 1) {
+    const wrapped = JSON.parse(text);
+    if (typeof wrapped.contents !== "string") throw new Error("bad wrapper");
+    text = wrapped.contents;
+  }
+  return JSON.parse(text);
+}
+
 async function neteaseGet(pathAndQuery) {
   const target = NE_BASE + pathAndQuery;
+  const idxs = PROXIES.map((_, i) => i);
+  const order = [goodProxy, ...idxs.filter((i) => i !== goodProxy)];
   let lastErr = null;
-  for (let i = 0; i < PROXIES.length; i++) {
-    const idx = (goodProxy + i) % PROXIES.length;
+  for (let pass = 0; pass < 2; pass++) {           /* 整轮失败后歇 800ms 再来一轮 */
+    /* 前两个代理并行竞速：谁先成功用谁 */
     try {
-      const res = await fetchTimeout(PROXIES[idx](target), 12000);
-      if (!res.ok) throw new Error("proxy " + res.status);
-      let text = await res.text();
-      /* allorigins /get 变体返回 {"contents": "..."} 包装，需要拆开 */
-      if (text.charAt(0) === "{" && text.indexOf('"contents"') === 1) {
-        text = JSON.parse(text).contents;
-      }
-      const data = JSON.parse(text);
-      goodProxy = idx; /* 记住成功的代理，下次优先 */
-      return data;
+      const racers = order.slice(0, 2).map(async (idx) => ({ idx, data: await tryProxy(idx, target) }));
+      const win = await Promise.any(racers);
+      goodProxy = win.idx;
+      return win.data;
     } catch (e) { lastErr = e; }
+    /* 其余代理依次兜底 */
+    for (const idx of order.slice(2)) {
+      try {
+        const data = await tryProxy(idx, target);
+        goodProxy = idx;
+        return data;
+      } catch (e) { lastErr = e; }
+    }
+    if (pass === 0) await new Promise((r) => setTimeout(r, 800));
   }
-  throw lastErr || new Error("所有代理都失败了");
+  throw lastErr || new Error("所有网络通道都失败了");
 }
 
 /* 图片加载失败时自动改走代理重试一次（网易云图床偶发被墙/防盗链） */
@@ -444,6 +466,9 @@ async function loadDaily(offset) {
   try {
     dailyList = await fetchTracks(dailyKeyword, offset);
     if (musicView === "home") renderMusic();
+    try { /* 存到本地，今天内再打开秒出、断网也有 */
+      localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ day: dayKey(), off: offset, list: dailyList }));
+    } catch (e) { /* 忽略存储失败 */ }
   } catch (e) {
     musicStatus.textContent = "推荐获取失败，点「换一批」再试试～";
   }
@@ -639,6 +664,19 @@ playerMini.addEventListener("click", () => {
   playerBar.hidden = false;
 });
 
+/* 关闭：停止播放、清空队列，悬浮窗和小球都收起来 */
+function closePlayer() {
+  playerMinimized = false;
+  playSeq++;
+  musicAudio.pause();
+  musicAudio.removeAttribute("src");
+  musicAudio.load(); /* 中断下载中的音频 */
+  queue = []; queueIdx = -1;
+  playerBar.hidden = true;
+  playerMini.hidden = true;
+  refreshPlaying();
+}
+
 /* 播放器事件 */
 plToggle.addEventListener("click", () => {
   if (!queue.length) return;
@@ -649,6 +687,7 @@ plToggle.addEventListener("click", () => {
 plNext.addEventListener("click", playNext);
 plPrev.addEventListener("click", playPrev);
 plMin.addEventListener("click", minimizePlayer);
+plClose.addEventListener("click", closePlayer);
 
 musicAudio.addEventListener("ended", playNext);
 musicAudio.addEventListener("play", refreshPlaying);
@@ -725,12 +764,22 @@ musicGrid.addEventListener("click", (e) => {
   }
 });
 
-/* ---- 初始化：按日期固定选一位歌手，每天不同 ---- */
-(function initDaily() {
+/* ---- 初始化：按日期固定选一位歌手，每天不同；今天已拉取过则直接用本地缓存 ---- */
+function dayKey() {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((now - start) / 86400000);
-  const seed = now.getFullYear() * 366 + dayOfYear;
-  dailyKeyword = DAILY_KEYWORDS[seed % DAILY_KEYWORDS.length];
-  loadDaily(dailyOffset);
+  return now.getFullYear() * 366 + Math.floor((now - start) / 86400000);
+}
+(function initDaily() {
+  dailyKeyword = DAILY_KEYWORDS[dayKey() % DAILY_KEYWORDS.length];
+  try {
+    const c = JSON.parse(localStorage.getItem(DAILY_CACHE_KEY));
+    if (c && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
+      dailyList = c.list;
+      dailyOffset = c.off || 0;
+      renderMusic();
+      return; /* 命中今日缓存，不再请求网络 */
+    }
+  } catch (e) { /* 缓存坏了就走网络 */ }
+  loadDaily(0);
 })();
