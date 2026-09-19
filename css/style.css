@@ -333,6 +333,7 @@ a { color: inherit; text-decoration: none; }
 .music-searchbar input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
 .music-search-btn { padding: 11px 26px; border: none; cursor: pointer; flex: none; }
 .music-hint { color: var(--text-muted); font-size: 0.85rem; margin: 12px 0 0; }
+.music-hint2 { font-size: 0.8rem; opacity: 0.72; margin-top: 16px; text-align: center; }
 .music-status { color: var(--text-muted); font-size: 0.92rem; min-height: 1.6em; margin: 8px 0 12px; }
 .music-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -382,6 +383,23 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* 标题行（今日推荐 / 搜索结果 / 我的收藏） */
+/* 历史记录工具：选择 / 清空 */
+.hist-tools { display: flex; gap: 8px; align-items: center; }
+.hist-trash { padding-left: 12px; padding-right: 12px; }
+.hist-trash:hover { color: #ef4444; border-color: #ef4444; }
+.music-refresh.danger { background: #ef4444; border-color: #ef4444; color: #fff; }
+/* 选择模式：卡片可点选 */
+.music-grid.selecting .music-card { cursor: pointer; }
+.music-grid.selecting .music-play,
+.music-grid.selecting .music-fav { display: none; }
+.music-card.hist-sel { border-color: #ef4444; box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.35); }
+.music-card.hist-sel::after {
+  content: "✓"; position: absolute; top: 8px; right: 8px; z-index: 5;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: #ef4444; color: #fff; font-size: 13px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
 .music-caption {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin: 18px 0 0;
