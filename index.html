@@ -239,6 +239,34 @@
     </div>
   </div>
 
+  <!-- 播放详情页（双击悬浮窗空白处打开）：左封面 / 右歌名+歌词 / 进度条 / 控制键 -->
+  <div class="np-mask" id="npMask" hidden>
+    <div class="np-card" role="dialog" aria-modal="true">
+      <button class="np-close" id="npClose" aria-label="关闭详情页" title="关闭">✕</button>
+      <div class="np-main">
+        <img class="np-art" id="npArt" alt="" referrerpolicy="no-referrer" onerror="pfImgFallback(this)" />
+        <div class="np-right">
+          <p class="np-name" id="npName"></p>
+          <p class="np-artist" id="npArtist"></p>
+          <div class="np-lyrics" id="npLyrics"><p class="np-hint">歌词加载中…</p></div>
+          <div class="np-time"><span id="npCur">0:00</span> / <span id="npDur">0:00</span></div>
+          <input type="range" id="npSeek" min="0" max="1000" value="0" aria-label="播放进度" />
+          <div class="np-controls">
+            <button class="np-btn" id="npPrev" aria-label="上一首">⏮</button>
+            <button class="np-btn np-toggle" id="npToggle" aria-label="播放/暂停">▶</button>
+            <button class="np-btn" id="npNext" aria-label="下一首">⏭</button>
+            <div class="np-volwrap">
+              <button class="np-btn" id="npVol" aria-label="音量" title="音量">🔊</button>
+              <div class="np-volpop" id="npVolPop" hidden>
+                <input type="range" id="npVolBar" min="0" max="100" value="100" aria-label="音量大小" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/main.js"></script>
 </body>
 </html>
