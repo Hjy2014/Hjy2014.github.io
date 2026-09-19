@@ -1262,7 +1262,21 @@ try {
 } catch (e) { /* 默认 1 */ }
 npVolBar.value = Math.round(musicAudio.volume * 100);
 npVol.textContent = musicAudio.volume > 0 ? "🔊" : "🔇";
-npVol.addEventListener("click", (e) => { e.stopPropagation(); npVolPop.hidden = !npVolPop.hidden; });
+/* 音量键交互：单击弹出/收起竖向音量条；双击=静音切换（记住静音前的音量） */
+let volTapT = 0, volMuteBefore = 0.8, volTapTimer = 0;
+npVol.addEventListener("pointerup", (e) => {
+  e.stopPropagation();
+  const now = Date.now();
+  if (now - volTapT < 280) {                 /* 双击 → 静音 / 取消静音 */
+    volTapT = 0;
+    clearTimeout(volTapTimer);
+    if (musicAudio.volume > 0) { volMuteBefore = musicAudio.volume; applyVolume(0); }
+    else applyVolume(volMuteBefore || 0.8);
+    return;
+  }
+  volTapT = now;
+  volTapTimer = setTimeout(() => { npVolPop.hidden = !npVolPop.hidden; }, 290); /* 单击 → 竖条 */
+});
 npVolBar.addEventListener("input", () => applyVolume(+npVolBar.value / 100));
 document.addEventListener("click", (e) => {
   if (npVolPop.hidden) return;
