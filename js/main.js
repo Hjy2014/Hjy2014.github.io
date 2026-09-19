@@ -274,7 +274,7 @@ const NE_BASE = "https://music.163.com/api";
 const PROXIES = [
   (u) => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   (u) => "https://api.codetabs.com/v1/proxy?quest=" + encodeURIComponent(u),
-  (u) => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  (u) => "https://api.cors.lol/?url=" + encodeURIComponent(u),
   (u) => "https://api.allorigins.win/get?url=" + encodeURIComponent(u), /* 返回包了一层 */
 ];
 let goodProxy = 0;
@@ -600,16 +600,37 @@ function renderMusic() {
 /* 取整张榜单曲目（匿名 playlist 接口，字段为旧格式 artists/album，自带封面），内存缓存 */
 async function fetchChart(pid) {
   if (chartCache[pid]) return chartCache[pid];
-  const data = await neteaseGet("/playlist/detail?id=" + pid);
-  const p = data.playlist || data.result || {};
-  chartCache[pid] = (p.tracks || []).map((s) => ({
-    id: s.id,
-    name: s.name,
-    artist: ((s.ar || s.artists) || []).map((a) => a.name).join(" / "),
-    album: (s.al && s.al.name) || (s.album && s.album.name) || "",
-    art: artOf(s.al || s.album),
-  }));
-  return chartCache[pid];
+  let list = null;
+  try {
+    const data = await neteaseGet("/playlist/detail?id=" + pid);
+    const p = data.playlist || data.result || {};
+    list = (p.tracks || []).map((s) => ({
+      id: s.id,
+      name: s.name,
+      artist: ((s.ar || s.artists) || []).map((a) => a.name).join(" / "),
+      album: (s.al && s.al.name) || (s.album && s.album.name) || "",
+      art: artOf(s.al || s.album),
+    }));
+  } catch (e) { /* 代理全挂 → Meting 直连兜底 */ }
+  if (!list || !list.length) {
+    /* Meting 免代理直连：从每首歌的播放地址里提取歌曲 id */
+    const r = await fetchTimeout("https://api.injahow.cn/meting/?type=playlist&id=" + pid, 9000);
+    if (!r.ok) throw new Error("meting " + r.status);
+    const arr = await r.json();
+    list = (Array.isArray(arr) ? arr : []).map((s) => {
+      const m = /[?&]id=(\d+)/.exec(s.url || "");
+      return {
+        id: m ? +m[1] : 0,
+        name: s.name || "未知歌曲",
+        artist: String(s.artist || ""),
+        album: "",
+        art: String(s.pic || "").replace("http://", "https://"),
+      };
+    }).filter((t) => t.id);
+  }
+  if (!list.length) throw new Error("榜单为空");
+  chartCache[pid] = list;
+  return list;
 }
 
 async function loadDaily(offset) {
