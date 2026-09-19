@@ -717,6 +717,7 @@ function schedulePrefetch(offset) {
         if (!raw.length) { delete dailyPrefetch[off]; return; } /* 越界空批，标记失效 */
         const r = await filterPlayable(raw);
         dailyPrefetch[off] = r.list; /* 完成；空列表也存，连播跳批逻辑会处理 */
+        r.list.forEach((t) => queueLrcPrefetch(t.id)); /* 这一批的歌词也提前缓存，翻页后秒出 */
       } catch (e) { delete dailyPrefetch[off]; /* 失败允许下次重试 */ }
     });
   }
@@ -1161,12 +1162,12 @@ async function loadLyricsInto(id) {
     npFollowLyric();
     return;
   }
-  if (npLrcLoadingId === id) return;           /* 同一首已在拉取中 */
-  npLrcLoadingId = id;
   const seq = ++npLrcReq;
   npLines = []; npLrcIdx = -1;
   plLyric.textContent = "";                    /* 悬浮窗歌词行先清空 */
   npLyrics.innerHTML = '<p class="np-hint">歌词加载中…</p>';
+  if (npLrcLoadingId === id) return;           /* 后台正在拉这首：占位已显示，完成后自动渲染 */
+  npLrcLoadingId = id;
   try {
     const lines = await fetchLyrics(id);
     if (seq !== npLrcReq) return;              /* 已切到别的歌 */
@@ -1182,6 +1183,33 @@ async function loadLyricsInto(id) {
   } finally {
     if (npLrcLoadingId === id) npLrcLoadingId = null;
   }
+}
+
+/* ---- 歌词预取：下一批/下下批歌曲的歌词提前拉好缓存（串行队列，不与播放抢带宽） ---- */
+let lrcChain = Promise.resolve();
+async function prefetchLrc(id) {
+  if (npLrcCache[id] !== undefined || npLrcLoadingId === id) return;
+  npLrcLoadingId = id;
+  try {
+    npLrcCache[id] = await fetchLyrics(id);          /* 只进缓存，不动界面 */
+  } catch (e) {
+    if (e && e.message === "empty lrc") npLrcCache[id] = null; /* 确认无歌词；网络失败不缓存，下轮再试 */
+  } finally {
+    if (npLrcLoadingId === id) npLrcLoadingId = null;
+  }
+  npApplyLrcIfCurrent(id);
+}
+function queueLrcPrefetch(id) {
+  lrcChain = lrcChain.then(() => prefetchLrc(id)).catch(() => {});
+}
+/* 预取完成后：如果详情页正好显示这首歌，就把"加载中"占位换成歌词 */
+function npApplyLrcIfCurrent(id) {
+  if (npMask.hidden || npArt.dataset.tid !== String(id)) return;
+  const lines = npLrcCache[id];
+  if (lines === undefined) return;
+  npLines = lines || [];
+  renderLyrics(npLines);
+  npFollowLyric();
 }
 
 /* 高亮当前句；同时把当前句同步到悬浮窗歌词行（plLyric）。
