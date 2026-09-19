@@ -55,21 +55,25 @@ const statObserver = new IntersectionObserver(
 );
 document.querySelectorAll(".stat b").forEach((el) => statObserver.observe(el));
 
-/* 平滑滚动到锚点：每帧重新计算目标位置，
-   即使滚动途中页面高度变化（如评论区加载）也能准确落在目标区块 */
+/* 平滑滚动到锚点：起止点一次测好，纯缓动插值，长距离也顺滑；
+   用户滚轮/触摸可随时打断 */
 const NAV_OFFSET = 84;
 function smoothScrollTo(target) {
   const startY = window.scrollY;
-  const dist = target.getBoundingClientRect().top - NAV_OFFSET;
-  const duration = Math.min(Math.max(Math.abs(dist) / 3, 400), 900);
+  const targetTop = Math.max(target.getBoundingClientRect().top + startY - NAV_OFFSET, 0);
+  const dist = Math.abs(targetTop - startY);
+  if (dist < 1) return;
+  const duration = Math.min(Math.max(dist / 2.5, 450), 1000);
   const start = performance.now();
+  let cancelled = false;
+  const cancel = () => { cancelled = true; };
+  window.addEventListener("wheel", cancel, { once: true, passive: true });
+  window.addEventListener("touchstart", cancel, { once: true, passive: true });
   function frame(now) {
+    if (cancelled) return;
     const p = Math.min((now - start) / duration, 1);
-    const ease = 1 - Math.pow(1 - p, 3);
-    /* 每帧用元素当前位置重新算目标，自动校正布局变化；
-       behavior instant 避免与浏览器自带平滑滚动叠加导致蠕动 */
-    const goal = target.getBoundingClientRect().top + window.scrollY - NAV_OFFSET;
-    window.scrollTo({ top: startY + (goal - startY) * ease, behavior: "instant" });
+    const ease = 1 - Math.pow(1 - p, 3); /* 先快后慢，落点柔和 */
+    window.scrollTo({ top: startY + (targetTop - startY) * ease, behavior: "instant" });
     if (p < 1) requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
