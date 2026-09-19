@@ -229,6 +229,17 @@
   <!-- 最小化后的小球（贴屏幕最左侧） -->
   <button class="player-mini" id="playerMini" hidden aria-label="展开播放器" title="点我展开播放器">🎵</button>
 
+  <!-- 确认弹窗（清空历史 / 清理所选歌曲等危险操作前询问） -->
+  <div class="ask-mask" id="askMask" hidden>
+    <div class="ask-box" role="dialog" aria-modal="true">
+      <p class="ask-text" id="askText"></p>
+      <div class="ask-btns">
+        <button class="ask-btn" id="askCancel">取消</button>
+        <button class="ask-btn ask-ok" id="askOk">确定</button>
+      </div>
+    </div>
+  </div>
+
   <script src="js/main.js"></script>
 </body>
 </html>
