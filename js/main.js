@@ -292,6 +292,8 @@ const pfResize = document.getElementById("pfResize");
 /* ---- 状态 ---- */
 let musicView = "home";          /* home=搜索+每日推荐 | search=搜索结果 | fav=我的收藏 */
 let lastView = "home";           /* 从收藏页返回时用 */
+let favPlayable = [];            /* 收藏里检查过可播放的 */
+let favChecked = false;          /* 收藏可播性是否已检查过 */
 const searchCache = {};          /* { 关键词: { 页码: 歌曲列表 } } */
 let searchKw = "", searchPage = 1;
 let dailyList = [];              /* 今日推荐列表 */
@@ -383,12 +385,28 @@ window.pfImgFallback = function (img) {
   img.src = PROXIES[0](img.src);
 };
 
+/* 批量可播性检查：一次请求整页歌的播放地址，去掉无版权（拿不到地址）和试听片段的 */
+async function filterPlayable(list) {
+  if (!list.length) return list;
+  try {
+    const ids = "[" + list.map((t) => t.id).join(",") + "]";
+    const data = await neteaseGet("/song/enhance/player/url?ids=" + ids + "&br=320000");
+    const ok = new Set((data.data || [])
+      .filter((d) => d && d.url && !d.freeTrialInfo) /* 无地址=无版权；freeTrialInfo=30秒试听 */
+      .map((d) => d.id));
+    return list.filter((t) => ok.has(t.id));
+  } catch (e) {
+    return list; /* 检查通道失败时不误杀，宁可先显示 */
+  }
+}
+
+/* 搜索一页：返回 {list: 过滤后可播放的歌曲, more: 服务端是否还有下一页} */
 async function fetchTracks(term, offset) {
   const data = await neteaseGet(
     "/search/get?s=" + encodeURIComponent(term) +
     "&type=1&limit=" + PAGE_SIZE + "&offset=" + offset
   );
-  return ((data.result && data.result.songs) || []).map((s) => ({
+  const raw = ((data.result && data.result.songs) || []).map((s) => ({
     id: s.id,
     name: s.name,
     artist: (s.artists || []).map((a) => a.name).join(" / "),
@@ -397,6 +415,8 @@ async function fetchTracks(term, offset) {
       .replace("http://", "https://")
       + (s.album && s.album.picUrl && !s.album.picUrl.includes("?") ? "?param=240y240" : ""),
   }));
+  const list = await filterPlayable(raw);
+  return { list, more: raw.length >= PAGE_SIZE };
 }
 
 /* 播放地址会过期，所以每次播放前实时解析 */
@@ -424,9 +444,10 @@ function trackCard(t) {
 }
 
 function currentList() {
-  if (musicView === "fav") return getFavs();
+  if (musicView === "fav") return favChecked ? favPlayable : getFavs();
   if (musicView === "home") return dailyList;
-  return (searchCache[searchKw] && searchCache[searchKw][searchPage]) || [];
+  const entry = searchCache[searchKw] && searchCache[searchKw][searchPage];
+  return (entry && entry.list) || [];
 }
 
 function renderMusic() {
@@ -443,17 +464,21 @@ function renderMusic() {
     musicCaption.textContent = `✨ 今日推荐 · ${dailyKeyword}`;
   } else if (musicView === "search") {
     musicCaption.textContent = `🔍 “${searchKw}” 的搜索结果`;
-    const pageList = (searchCache[searchKw] && searchCache[searchKw][searchPage]) || [];
+    const entry = searchCache[searchKw] && searchCache[searchKw][searchPage];
     pagePrev.disabled = searchPage <= 1;
-    pageNext.disabled = pageList.length < PAGE_SIZE;
+    pageNext.disabled = !(entry && entry.more); /* 服务端还有下一页才可点 */
     pageInfo.textContent = `第 ${searchPage} 页`;
   } else {
     musicCaption.textContent = "❤️ 我的收藏";
   }
 
   const list = currentList();
-  if (musicView === "fav" && !list.length) musicStatus.textContent = "还没有收藏，搜索一首喜欢的歌吧～";
-  else if (musicView === "home" && !list.length) musicStatus.textContent = "今日推荐生成中…";
+  if (musicView === "fav" && !list.length) {
+    const total = getFavs().length;
+    musicStatus.textContent = (favChecked && total)
+      ? "收藏里的无版权歌曲已自动隐藏～"
+      : "还没有收藏，搜索一首喜欢的歌吧～";
+  } else if (musicView === "home" && !list.length) musicStatus.textContent = "今日推荐生成中…";
   else musicStatus.textContent = "";
   musicGrid.innerHTML = list.map(trackCard).join("");
 }
@@ -464,7 +489,7 @@ async function loadDaily(offset) {
   musicStatus.textContent = "正在生成今日推荐…";
   musicGrid.innerHTML = "";
   try {
-    dailyList = await fetchTracks(dailyKeyword, offset);
+    dailyList = (await fetchTracks(dailyKeyword, offset)).list;
     if (musicView === "home") renderMusic();
     try { /* 存到本地，今天内再打开秒出、断网也有 */
       localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ day: dayKey(), off: offset, list: dailyList }));
@@ -492,10 +517,10 @@ async function gotoSearchPage(page, force) {
   musicStatus.textContent = "正在搜索…";
   musicGrid.innerHTML = "";
   try {
-    const list = await fetchTracks(searchKw, (page - 1) * PAGE_SIZE);
-    searchCache[searchKw][page] = list;
+    const res = await fetchTracks(searchKw, (page - 1) * PAGE_SIZE);
+    searchCache[searchKw][page] = res;
     searchPage = page;
-    if (!list.length && page === 1) musicStatus.textContent = "没找到相关音乐，换个关键词试试？";
+    if (!res.list.length && page === 1) musicStatus.textContent = "没找到相关音乐（无版权的已自动过滤），换个关键词试试？";
     renderMusic();
   } catch (e) {
     musicStatus.textContent = "搜索失败，可能是网络波动，稍后再试～";
@@ -716,14 +741,19 @@ plFav.addEventListener("click", () => {
 });
 
 /* ---- 视图切换 ---- */
-favTab.addEventListener("click", () => {
+favTab.addEventListener("click", async () => {
   if (musicView === "fav") {
     musicView = lastView || "home";
+    renderMusic();
   } else {
     lastView = musicView;
     musicView = "fav";
+    favChecked = false;
+    renderMusic(); /* 先显示全部收藏 */
+    favPlayable = await filterPlayable(getFavs()); /* 再后台筛掉无版权的 */
+    favChecked = true;
+    if (musicView === "fav") renderMusic();
   }
-  renderMusic();
 });
 
 /* ---- 搜索控件 ---- */
@@ -760,6 +790,7 @@ musicGrid.addEventListener("click", (e) => {
     const i = favs.findIndex((t) => t.id === id);
     if (i >= 0) favs.splice(i, 1); else favs.push(list[idx]);
     setFavs(favs);
+    favPlayable = favPlayable.filter((t) => t.id !== id); /* 同步收藏过滤视图 */
     renderMusic();
   }
 });
