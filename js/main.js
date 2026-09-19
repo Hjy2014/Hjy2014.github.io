@@ -315,16 +315,17 @@ let favPlayable = [];            /* 收藏里检查过可播放的 */
 let favChecked = false;          /* 收藏可播性是否已检查过 */
 const searchCache = {};          /* { 关键词: { 页码: 歌曲列表 } } */
 let searchKw = "", searchPage = 1;
-let dailyList = [];              /* 今日推荐列表 */
-let dailyOffset = 0;             /* 换一批偏移：0/30/60 三批轮换 */
-const DAILY_KEYWORDS = [
-  "周杰伦", "林俊杰", "薛之谦", "邓紫棋", "陈奕迅", "五月天",
-  "Taylor Swift", "Ed Sheeran", "许嵩", "毛不易", "王菲", "张学友",
-  "Bruno Mars", "张杰", "李荣浩", "Billie Eilish",
-  "陶喆", "王心凌", "告五人", "房东的猫", "Adele", "Coldplay",
-  "朴树", "郁可唯", "周深", "单依纯", "汪苏泷", "徐佳莹",
+let dailyList = [];              /* 今日推荐列表（网易云爆火榜单） */
+let dailyOffset = 0;             /* 换一批偏移 */
+/* 网易云爆火歌曲榜单：每天轮换一个，"近日爆火"以飙升榜为代表 */
+const DAILY_CHARTS = [
+  { id: 19723756, name: "飙升榜" },      /* 最近飙升最快的歌，爆火风向标 */
+  { id: 2250011882, name: "抖音热歌" },  /* 短视频爆火曲 */
+  { id: 3778678, name: "热歌榜" },       /* 全网最热 */
 ];
-let dailyKeyword = "";
+let dailyChart = DAILY_CHARTS[0];
+let dailyChartLen = PAGE_SIZE * 3; /* 当前榜单总曲数（用于换一批循环范围） */
+const chartCache = {};             /* { 榜单playlistId: 原始曲目列表 } */
 
 /* ---- 播放器状态 ---- */
 const musicAudio = new Audio();
@@ -573,7 +574,7 @@ function renderMusic() {
   dailyRefresh.hidden = musicView !== "home";
   musicPager.hidden = musicView !== "search";
   if (musicView === "home") {
-    musicCaption.textContent = `✨ 今日推荐 · ${dailyKeyword}`;
+    musicCaption.textContent = `🔥 今日推荐 · 网易云${dailyChart.name}`;
   } else if (musicView === "search") {
     musicCaption.textContent = `🔍 “${searchKw}” 的搜索结果`;
     const entry = searchCache[searchKw] && searchCache[searchKw][searchPage];
@@ -595,25 +596,42 @@ function renderMusic() {
   musicGrid.innerHTML = list.map(trackCard).join("");
 }
 
-/* ---- 每日推荐 ---- */
+/* ---- 每日推荐：网易云爆火榜单 ---- */
+/* 取整张榜单曲目（匿名 playlist 接口，字段为旧格式 artists/album，自带封面），内存缓存 */
+async function fetchChart(pid) {
+  if (chartCache[pid]) return chartCache[pid];
+  const data = await neteaseGet("/playlist/detail?id=" + pid);
+  const p = data.playlist || data.result || {};
+  chartCache[pid] = (p.tracks || []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    artist: ((s.ar || s.artists) || []).map((a) => a.name).join(" / "),
+    album: (s.al && s.al.name) || (s.album && s.album.name) || "",
+    art: artOf(s.al || s.album),
+  }));
+  return chartCache[pid];
+}
+
 async function loadDaily(offset) {
   dailyOffset = offset;
-  musicStatus.textContent = "正在生成今日推荐…";
+  musicStatus.textContent = `正在获取网易云${dailyChart.name}…`;
   musicGrid.innerHTML = "";
   try {
-    const res = await fetchTracks(dailyKeyword, offset, (raw) => {
-      /* 推荐列表一到就先显示（已带封面），版权过滤在后台继续 */
-      dailyList = raw;
-      if (musicView === "home") { renderMusic(); musicStatus.textContent = "正在过滤无版权歌曲…"; }
-    });
-    dailyList = res.list;
+    const chart = await fetchChart(dailyChart.id);
+    dailyChartLen = chart.length;
+    const raw = chart.slice(offset, offset + PAGE_SIZE);
+    /* 榜单片段一到就先显示（已带封面），版权过滤在后台继续 */
+    dailyList = raw;
+    if (musicView === "home") { renderMusic(); musicStatus.textContent = "正在过滤无版权歌曲…"; }
+    const r = await filterPlayable(raw);
+    dailyList = r.list;
     if (musicView === "home") {
       renderMusic();
-      if (!res.list.length) musicStatus.textContent = "这一批没有可播放的歌曲，点「换一批」试试吧～";
+      if (!r.list.length) musicStatus.textContent = "这一批没有可播放的歌曲，点「换一批」试试吧～";
     }
-    if (res.checked) { /* 只有确认过滤过的列表才值得缓存（v=缓存格式版本） */
+    if (r.checked) { /* 只有确认过滤过的列表才值得缓存（v=缓存格式版本） */
       try {
-        localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 3, day: dayKey(), off: offset, list: dailyList }));
+        localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 4, day: dayKey(), off: offset, list: dailyList }));
       } catch (e) { /* 忽略存储失败 */ }
     }
   } catch (e) {
@@ -946,7 +964,8 @@ musicInput.addEventListener("keydown", (e) => { if (e.key === "Enter") searchMus
 pagePrev.addEventListener("click", () => { if (searchPage > 1) gotoSearchPage(searchPage - 1); });
 pageNext.addEventListener("click", () => gotoSearchPage(searchPage + 1));
 dailyRefresh.addEventListener("click", () => {
-  loadDaily((dailyOffset + PAGE_SIZE) % (PAGE_SIZE * 3)); /* 三批轮换 */
+  /* 在当前榜单总曲数内循环分批 */
+  loadDaily((dailyOffset + PAGE_SIZE) % (Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE));
 });
 
 /* ---- 卡片按钮：播放 / 收藏（事件委托） ---- */
@@ -977,17 +996,17 @@ musicGrid.addEventListener("click", (e) => {
   }
 });
 
-/* ---- 初始化：按日期固定选一位歌手，每天不同；今天已拉取过则直接用本地缓存 ---- */
+/* ---- 初始化：按日期轮换一个爆火榜单，每天不同；今天已拉取过则直接用本地缓存 ---- */
 function dayKey() {
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   return now.getFullYear() * 366 + Math.floor((now - start) / 86400000);
 }
 (function initDaily() {
-  dailyKeyword = DAILY_KEYWORDS[dayKey() % DAILY_KEYWORDS.length];
+  dailyChart = DAILY_CHARTS[dayKey() % DAILY_CHARTS.length];
   try {
     const c = JSON.parse(localStorage.getItem(DAILY_CACHE_KEY));
-    if (c && c.v === 3 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
+    if (c && c.v === 4 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
       dailyList = c.list;
       dailyOffset = c.off || 0;
       renderMusic();
