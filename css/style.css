@@ -761,3 +761,29 @@ a { color: inherit; text-decoration: none; }
   .game-toolbar { flex-direction: column; align-items: stretch; }
   .game-grid2 { grid-template-columns: repeat(auto-fill, minmax(136px, 1fr)); gap: 12px; }
 }
+
+/* 最小化 & 全屏状态 */
+.game-modal-min {
+  width: auto; padding: 0 12px; border: none; border-radius: 999px; cursor: pointer;
+  background: var(--bg-alt); color: var(--text-muted); font: inherit; font-size: 0.78rem;
+  height: 32px; flex: none; white-space: nowrap;
+}
+.game-modal-min:hover { color: var(--primary); background: var(--primary-soft); }
+.game-modal-mask.min { background: transparent; animation: none; }
+.game-modal-mask.min .game-modal {
+  position: fixed; right: 16px; bottom: 16px; z-index: 2400;
+  width: 300px; max-height: none; padding: 8px 10px; cursor: pointer;
+  box-shadow: 0 14px 44px rgba(2, 6, 23, 0.35);
+  animation: modalIn 0.2s both;
+}
+.game-modal-mask.min .game-modal-stage,
+.game-modal-mask.min .game-modal-tip { display: none; }
+.game-modal-mask.min .game-modal-title { font-size: 0.86rem; }
+.game-modal-mask.min .game-modal-actions { gap: 6px; }
+.game-modal-mask.min .game-modal-min { display: none; }
+/* 网页内全屏 */
+.game-modal-stage:fullscreen { background: #000; }
+.game-modal-stage:fullscreen iframe {
+  max-width: none !important; width: 100vw !important; height: 100vh !important;
+  aspect-ratio: auto; border-radius: 0;
+}
