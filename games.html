@@ -23,8 +23,10 @@
       <div class="game-toolbar">
         <div class="game-search">
           <span class="game-search-icon">🔍</span>
-          <input type="search" id="gameSearch" placeholder="输入游戏名字，一键搜索（比如：玛丽、坦克、僵尸）" autocomplete="off" />
-          <button class="game-search-clear" id="gameSearchClear" hidden title="清空搜索">✕</button>
+          <input type="text" id="gameSearch" role="searchbox" enterkeyhint="search" placeholder="输入游戏名字，一键搜索（比如：玛丽、坦克、僵尸）" autocomplete="off" />
+          <button class="game-search-clear" id="gameSearchClear" hidden title="清空搜索" aria-label="清空搜索">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 4.6l6.8 6.8M11.4 4.6l-6.8 6.8" /></svg>
+          </button>
         </div>
         <button class="btn btn-primary game-random" id="gameRandom" title="随机挑一个游戏开玩">🎲 随机来一个</button>
       </div>
@@ -51,13 +53,23 @@
       <div class="game-modal-head">
         <p class="game-modal-title" id="gameModalTitle"></p>
         <div class="game-modal-actions">
-          <button class="game-modal-min" id="gameModalMin" title="最小化到右下角，稍后继续玩">— 最小化</button>
-          <button class="game-modal-open" id="gameModalFull" title="网页内放大成全屏">⛶ 全屏</button>
-          <button class="game-modal-close" id="gameModalClose" aria-label="关闭游戏">✕</button>
+          <button class="game-modal-min" id="gameModalMin" title="最小化，稍后再玩" aria-label="最小化">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path class="ico-min" d="M4.2 8h7.6" /></svg>
+          </button>
+          <button class="game-modal-full" id="gameModalFull" title="全屏" aria-label="全屏">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <rect class="ico-max" x="4.3" y="4.3" width="7.4" height="7.4" rx="1.9" />
+              <rect class="ico-restore" x="3.4" y="6.6" width="6" height="6" rx="1.7" />
+              <path class="ico-restore" d="M6.6 6.6v-1a1.7 1.7 0 0 1 1.7-1.7h2.8a1.7 1.7 0 0 1 1.7 1.7v2.8a1.7 1.7 0 0 1-1.7 1.7h-1" />
+            </svg>
+          </button>
+          <button class="game-modal-close" id="gameModalClose" title="关闭（停止游戏）" aria-label="关闭游戏">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.6 4.6l6.8 6.8M11.4 4.6l-6.8 6.8" /></svg>
+          </button>
         </div>
       </div>
       <div class="game-modal-stage" id="gameModalStage"></div>
-      <p class="game-modal-tip">提示：点 ▶ 绿旗开始 · 最小化后右下角点一下继续玩 · 关闭后停止游戏</p>
+      <p class="game-modal-tip">提示：点 ▶ 绿旗开始 · <b>—</b> 最小化到右下角（点一下继续玩） · <b>▢</b> 全屏 · <b>✕</b> 关闭并停止游戏 · 玩的时候会自动帮你缓冲后面 3 个游戏</p>
     </div>
   </div>
 
@@ -69,6 +81,7 @@
     /* ===== Scratch 游戏库：搜索 + 弹窗播放 ===== */
     (function () {
       var GAMES = [];
+      var curList = [];        /* 当前正在展示（含搜索结果）的有序清单，提前缓冲按它的顺序走 */
       var shown = 0;
       var CHUNK = 48;
       var grid = document.getElementById("gamesGrid");
@@ -81,10 +94,42 @@
       var modal = document.getElementById("gameModal");
       var modalTitle = document.getElementById("gameModalTitle");
       var modalStage = document.getElementById("gameModalStage");
+      var fullBtn = document.getElementById("gameModalFull");
       var EMOJI = ["🐱", "🚀", "⚽", "🕹️", "🏰", "🐍", "🐟", "🎲", "👾", "🏎️", "🧩", "⚡"];
 
-      function fileUrl(f) {
-        return "https://hjy2014.github.io/games/files/" + f;
+      /* 游戏文件分三个仓库存放（单站 1GB 上限）：h=2/3 走扩展仓库 */
+      function fileUrl(g) {
+        var base = g.h === 2 ? "https://hjy2014.github.io/hjy-games-2/files/"
+                 : g.h === 3 ? "https://hjy2014.github.io/hjy-games-3/files/"
+                 : "https://hjy2014.github.io/games/files/";
+        return base + g.f;
+      }
+
+      /* ---- 提前缓冲：玩着这一个，悄悄把后面 3 个下载好 ---- */
+      var AHEAD = 3;                 /* 往后预取几个 */
+      var pfQueue = [], pfSeen = {}, pfBusy = false, pfTimer = null;
+      function prefetch(url) {
+        if (!url || pfSeen[url]) return;
+        pfSeen[url] = 1;
+        pfQueue.push(url);
+        pfPump();
+      }
+      function pfPump() {
+        if (pfBusy || !pfQueue.length) return;
+        pfBusy = true;
+        /* 串行 + 低优先级：不跟正在玩的游戏抢带宽；force-cache 命中就不再下载 */
+        fetch(pfQueue.shift(), { mode: "cors", credentials: "omit", cache: "force-cache" })
+          .catch(function () {})
+          .then(function () { pfBusy = false; pfPump(); });
+      }
+      function prefetchAhead(g) {
+        var i = curList.indexOf(g);
+        if (i < 0) return;
+        var urls = [], k;
+        for (k = 1; k <= AHEAD && i + k < curList.length; k++) urls.push(fileUrl(curList[i + k]));
+        if (!urls.length) return;
+        clearTimeout(pfTimer);
+        pfTimer = setTimeout(function () { urls.forEach(prefetch); }, 1200);
       }
       function filtered() {
         var kw = searchInput.value.trim().toLowerCase();
@@ -101,11 +146,18 @@
           '<span class="game-card2-play">▶ 开始游戏</span>';
         card.querySelector(".game-card2-name").textContent = g.n;
         card.addEventListener("click", function () { openGame(g); });
+        /* 鼠标停在卡片上就先下起来，点进去基本秒开 */
+        var hoverTimer = null;
+        card.addEventListener("mouseenter", function () {
+          hoverTimer = setTimeout(function () { prefetch(fileUrl(g)); }, 300);
+        });
+        card.addEventListener("mouseleave", function () { clearTimeout(hoverTimer); });
         return card;
       }
       function render(reset) {
         if (reset) { grid.innerHTML = ""; shown = 0; }
         var list = filtered();
+        curList = list;
         var end = Math.min(shown + CHUNK, list.length);
         for (var i = shown; i < end; i++) {
           var c = makeCard(list[i], i);
@@ -124,24 +176,29 @@
 
       /* ---- 弹窗播放 ---- */
       function openGame(g) {
-        var url = fileUrl(g.f);
+        var url = fileUrl(g);
         modalTitle.textContent = g.n;
         modal.classList.remove("min");
+        fullBtn.classList.remove("on");
         modalStage.innerHTML =
           '<iframe src="https://turbowarp.org/embed?project_url=' + encodeURIComponent(url) +
           '&autoplay&settings-button" width="482" height="412" allowtransparency="true" frameborder="0" ' +
           'scrolling="no" allowfullscreen="" style="color-scheme:auto" loading="lazy"></iframe>';
         modal.hidden = false;
         document.body.style.overflow = "hidden";
+        prefetchAhead(g);            /* 一边玩，一边把后面 3 个缓冲好 */
       }
       function closeGame() {
+        if (document.fullscreenElement) document.exitFullscreen();
         modal.hidden = true;
         modal.classList.remove("min");
+        fullBtn.classList.remove("on");
         modalStage.innerHTML = "";   /* 移除 iframe = 停止游戏和声音 */
         document.body.style.overflow = "";
       }
       /* 最小化：弹窗缩到右下角，游戏进程保留，稍后点一下继续 */
       function minimizeGame() {
+        if (document.fullscreenElement) document.exitFullscreen();
         modal.classList.add("min");
         document.body.style.overflow = "";   /* 释放页面滚动，可以随便逛 */
       }
@@ -151,9 +208,17 @@
       }
       document.getElementById("gameModalClose").addEventListener("click", closeGame);
       document.getElementById("gameModalMin").addEventListener("click", minimizeGame);
-      document.getElementById("gameModalFull").addEventListener("click", function () {
+      fullBtn.addEventListener("click", function () {
         if (document.fullscreenElement) { document.exitFullscreen(); return; }
-        if (modalStage.requestFullscreen) modalStage.requestFullscreen();
+        if (modal.classList.contains("min")) restoreGame();   /* 最小化状态下先还原再放大 */
+        if (modalStage.requestFullscreen) {
+          var p = modalStage.requestFullscreen();
+          if (p && p.catch) p.catch(function () {});
+        }
+      });
+      document.addEventListener("fullscreenchange", function () {
+        fullBtn.classList.toggle("on", !!document.fullscreenElement);
+        fullBtn.title = document.fullscreenElement ? "退出全屏" : "全屏";
       });
       /* 最小化状态下点小窗任意非按钮位置 = 恢复 */
       modal.addEventListener("click", function (e) {
@@ -175,7 +240,12 @@
         timer = setTimeout(function () { render(true); window.scrollTo(0, 0); }, 180);
       });
       searchClear.addEventListener("click", function () {
-        searchInput.value = ""; searchClear.hidden = true; render(true);
+        searchInput.value = ""; searchClear.hidden = true; render(true); searchInput.focus();
+      });
+      searchInput.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && searchInput.value) {
+          searchInput.value = ""; searchClear.hidden = true; render(true);
+        }
       });
       document.getElementById("gameRandom").addEventListener("click", function () {
         if (!GAMES.length) return;
