@@ -6,7 +6,8 @@
 (function () {
   "use strict";
 
-  var GAMES_CACHE = null;      /* 清单缓存：换页回来不用再下一次 */
+  /* 清单缓存：挂在 window 上，因为无刷新换页时本脚本会重跑一遍，模块内的变量会重置 */
+  var GAMES_CACHE = window.__hjyGamesCache || null;
 
   function init(signal) {
     var GAMES = [];
@@ -200,7 +201,7 @@
     fetch("games/games.json", { cache: "no-cache" })
       .then(function (r) { return r.json(); })
       .then(function (list) {
-        GAMES_CACHE = list;
+        window.__hjyGamesCache = GAMES_CACHE = list;
         applyList(list);
       })
       .catch(function () {
