@@ -83,9 +83,6 @@
       var modalNewTab = document.getElementById("gameModalNewTab");
       var EMOJI = ["🐱", "🚀", "⚽", "🕹️", "🏰", "🐍", "🐟", "🎲", "👾", "🏎️", "🧩", "⚡"];
 
-      function sizeText(kb) {
-        return kb >= 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB";
-      }
       function fileUrl(f) {
         return "https://hjy2014.github.io/games/files/" + f;
       }
@@ -101,7 +98,7 @@
         card.innerHTML =
           '<span class="game-card2-icon">' + EMOJI[(g.i || idx) % EMOJI.length] + "</span>" +
           '<span class="game-card2-name"></span>' +
-          '<span class="game-card2-meta"><b>' + (g.e || "") + "</b> · " + sizeText(g.s) + "</span>" +
+          '<span class="game-card2-meta"><b>' + (g.e || "") + "</b></span>" +
           '<span class="game-card2-play">▶ 开始游戏</span>';
         card.querySelector(".game-card2-name").textContent = g.n;
         card.addEventListener("click", function () { openGame(g); });
@@ -167,6 +164,7 @@
       fetch("games/games.json", { cache: "no-cache" })
         .then(function (r) { return r.json(); })
         .then(function (list) {
+          list.sort(function (a, b) { return b.s - a.s; });   /* 大文件排前面 */
           GAMES = list;
           GAMES.forEach(function (g, i) {
             g.i = i;
