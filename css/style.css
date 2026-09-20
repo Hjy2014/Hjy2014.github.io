@@ -690,10 +690,27 @@ a { color: inherit; text-decoration: none; }
   padding: 12px 4px; font: inherit; color: var(--text);
 }
 .game-search input::placeholder { color: var(--text-muted); opacity: 0.7; }
+/* 干掉浏览器自带的清除小叉，只保留右侧灰圆里的自定义叉号 */
+.game-search input::-webkit-search-cancel-button,
+.game-search input::-webkit-search-decoration,
+.game-search input::-webkit-search-results-button,
+.game-search input::-webkit-search-results-decoration {
+  -webkit-appearance: none; appearance: none; display: none;
+}
+.game-search input::-ms-clear,
+.game-search input::-ms-reveal { display: none; width: 0; height: 0; }
 .game-search-clear {
   border: none; background: var(--bg-alt); color: var(--text-muted); cursor: pointer;
-  width: 28px; height: 28px; border-radius: 50%; margin-right: 10px; flex: none; font-size: 0.8rem;
+  width: 28px; height: 28px; border-radius: 50%; margin-right: 10px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background 0.18s, color 0.18s, transform 0.18s;
 }
+.game-search-clear svg {
+  width: 12px; height: 12px; display: block;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round;
+}
+.game-search-clear:hover { color: var(--primary); background: var(--primary-soft); }
+.game-search-clear:active { transform: scale(0.9); }
 .game-random { padding: 12px 22px; white-space: nowrap; flex: none; }
 .game-count { color: var(--text-muted); font-size: 0.9rem; margin: 14px 2px 18px; }
 .game-grid2 {
@@ -741,15 +758,34 @@ a { color: inherit; text-decoration: none; }
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .game-modal-actions { display: flex; align-items: center; gap: 8px; flex: none; }
-.game-modal-open {
-  font-size: 0.82rem; color: var(--primary); text-decoration: none; font-weight: 700;
-  border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px;
-}
+/* 窗口按钮三兄弟：统一圆润胶囊圆，只有图标没有文字 */
+.game-modal-min,
+.game-modal-full,
 .game-modal-close {
-  width: 32px; height: 32px; border: none; border-radius: 50%; cursor: pointer;
-  background: var(--bg-alt); color: var(--text-muted); font-size: 0.95rem; flex: none;
+  width: 32px; height: 32px; flex: none; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 50%; cursor: pointer;
+  background: var(--bg-alt); color: var(--text-muted);
+  transition: background 0.18s, color 0.18s, transform 0.18s;
 }
+.game-modal-min svg,
+.game-modal-full svg,
+.game-modal-close svg {
+  width: 16px; height: 16px; display: block;
+  fill: none; stroke: currentColor; stroke-width: 1.7;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.game-modal-min:hover,
+.game-modal-full:hover { color: var(--primary); background: var(--primary-soft); }
 .game-modal-close:hover { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+.game-modal-min:active,
+.game-modal-full:active,
+.game-modal-close:active { transform: scale(0.9); }
+/* 全屏时方框换成“还原”图标 */
+.game-modal-full .ico-restore { display: none; }
+.game-modal-full.on .ico-max { display: none; }
+.game-modal-full.on .ico-restore { display: block; }
+.game-modal-full.on { color: var(--primary); background: var(--primary-soft); }
 .game-modal-stage { display: flex; justify-content: center; }
 .game-modal-stage iframe {
   width: 100% !important; max-width: 482px; aspect-ratio: 482 / 412; height: auto !important;
@@ -763,12 +799,6 @@ a { color: inherit; text-decoration: none; }
 }
 
 /* 最小化 & 全屏状态 */
-.game-modal-min {
-  width: auto; padding: 0 12px; border: none; border-radius: 999px; cursor: pointer;
-  background: var(--bg-alt); color: var(--text-muted); font: inherit; font-size: 0.78rem;
-  height: 32px; flex: none; white-space: nowrap;
-}
-.game-modal-min:hover { color: var(--primary); background: var(--primary-soft); }
 .game-modal-mask.min { background: transparent; animation: none; }
 .game-modal-mask.min .game-modal {
   position: fixed; right: 16px; bottom: 16px; z-index: 2400;
@@ -778,9 +808,13 @@ a { color: inherit; text-decoration: none; }
 }
 .game-modal-mask.min .game-modal-stage,
 .game-modal-mask.min .game-modal-tip { display: none; }
-.game-modal-mask.min .game-modal-title { font-size: 0.86rem; }
+.game-modal-mask.min .game-modal-title { font-size: 0.88rem; }
+.game-modal-mask.min .game-modal-title::after {
+  content: " · 点一下继续玩"; font-weight: 400; font-size: 0.72rem; color: var(--text-muted);
+}
 .game-modal-mask.min .game-modal-actions { gap: 6px; }
-.game-modal-mask.min .game-modal-min { display: none; }
+.game-modal-mask.min .game-modal-min,
+.game-modal-mask.min .game-modal-full { display: none; }
 /* 网页内全屏 */
 .game-modal-stage:fullscreen { background: #000; }
 .game-modal-stage:fullscreen iframe {
