@@ -821,3 +821,92 @@ a { color: inherit; text-decoration: none; }
   max-width: none !important; width: 100vw !important; height: 100vh !important;
   aspect-ratio: auto; border-radius: 0;
 }
+
+/* ============ 常驻层：播放器与站点壳（换页不重建，音乐不断） ============ */
+/* 音频元素留在 DOM 里（安卓/iOS 后台播放更稳），用零尺寸隐藏而不是 display:none */
+#hjyAudio {
+  position: fixed; left: -10px; top: -10px;
+  width: 1px; height: 1px; opacity: 0; pointer-events: none;
+}
+
+/* ============ 可点击的歌手名（卡片 / 悬浮窗 / 详情页） ============ */
+.music-artist-name {
+  border: 0; background: none; padding: 0; margin: 0; font: inherit; color: inherit;
+  cursor: pointer; text-align: left; border-radius: 4px;
+  transition: color 0.16s;
+}
+.music-artist-name:hover { color: var(--primary); text-decoration: underline; }
+.music-artist-sep { color: var(--text-muted); }
+.pl-artist:hover, .np-artist:hover { color: var(--primary); text-decoration: underline; }
+
+/* ============ 歌手弹窗（简介 + 音乐 + 全部播放） ============ */
+.artist-mask {
+  position: fixed; inset: 0; z-index: 2250;
+  background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(6px);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.artist-card {
+  position: relative; width: 100%; max-width: 620px; max-height: 88vh;
+  background: #fff; border-radius: 24px; padding: 24px;
+  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.35);
+  animation: modalIn 0.25s ease;
+  display: flex; flex-direction: column; min-height: 0;
+}
+.artist-close {
+  position: absolute; top: 14px; right: 16px; width: 34px; height: 34px;
+  border: none; background: #f1f5f9; color: #64748b; border-radius: 50%;
+  font-size: 1rem; cursor: pointer; transition: all 0.2s;
+}
+.artist-close:hover { background: #e2e8f0; color: #0f172a; transform: rotate(90deg); }
+.artist-head { display: flex; gap: 18px; align-items: center; padding-right: 34px; }
+.artist-avatar {
+  width: 92px; height: 92px; border-radius: 50%; object-fit: cover; flex: none;
+  background: #f1f5f9; box-shadow: 0 8px 22px rgba(2, 6, 23, 0.16);
+}
+.artist-headinfo { min-width: 0; }
+.artist-name {
+  font-size: 1.3rem; font-weight: 800; color: #0f172a; margin: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.artist-metas { color: #64748b; font-size: 0.85rem; margin: 6px 0 0; }
+.artist-playall {
+  margin-top: 12px; padding: 9px 22px; border-radius: 999px; border: none;
+  background: var(--primary, #2563eb); color: #fff; font: inherit; font-size: 0.9rem;
+  font-weight: 700; cursor: pointer; transition: filter 0.2s, opacity 0.2s;
+}
+.artist-playall:hover:not(:disabled) { filter: brightness(1.08); }
+.artist-playall:disabled { opacity: 0.5; cursor: not-allowed; }
+.artist-stats { color: #64748b; font-size: 0.82rem; margin: 14px 0 0; }
+.artist-intro {
+  margin: 12px 0 0; padding: 14px 16px; border-radius: 14px; background: #f8fafc;
+  border: 1px solid #e2e8f0; color: #475569; font-size: 0.88rem; line-height: 1.75;
+  white-space: pre-wrap; max-height: 190px; overflow-y: auto;
+}
+.artist-songtitle { color: #64748b; font-size: 0.82rem; margin: 16px 0 8px; }
+.artist-songs {
+  flex: 1; min-height: 90px; overflow-y: auto;
+  border-top: 1px solid #e2e8f0; padding-top: 6px;
+}
+.artist-song {
+  width: 100%; display: flex; align-items: center; gap: 12px;
+  border: none; background: none; font: inherit; text-align: left;
+  padding: 9px 10px; border-radius: 12px; cursor: pointer; color: #0f172a;
+  transition: background 0.16s;
+}
+.artist-song:hover { background: #f1f5f9; }
+.artist-song-no {
+  width: 24px; flex: none; text-align: center; color: #94a3b8;
+  font-size: 0.8rem; font-variant-numeric: tabular-nums;
+}
+.artist-song-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.artist-song-name { font-size: 0.92rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.artist-song-album { color: #94a3b8; font-size: 0.76rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.artist-song-dur { color: #94a3b8; font-size: 0.78rem; flex: none; font-variant-numeric: tabular-nums; }
+.artist-hint { color: #94a3b8; font-size: 0.88rem; text-align: center; padding: 22px 0; margin: 0; }
+
+@media (max-width: 640px) {
+  .artist-card { padding: 20px 16px; }
+  .artist-avatar { width: 72px; height: 72px; }
+  .artist-name { font-size: 1.12rem; }
+  .artist-intro { max-height: 140px; }
+}
