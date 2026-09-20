@@ -395,6 +395,23 @@
           if (histSel.has(Number(card.dataset.id))) card.classList.add("hist-sel");
         });
       }
+      saveMemo();
+    }
+
+    /* 记住「现在这一屏长什么样」：无刷新换页会重跑本脚本，模块变量会重置，
+       所以挂到 window 上，换页回来直接还原，不必再等网络。 */
+    function saveMemo() {
+      try {
+        window.__hjyHomeMemo = {
+          day: dayKey(),
+          chart: chartCache,
+          pf: dailyPrefetch,
+          daily: { list: dailyList, off: dailyOffset, len: dailyChartLen },
+          view: musicView, lastView: lastView,
+          kw: searchKw, page: searchPage, cache: searchCache,
+          favPlayable: favChecked ? favPlayable : null,
+        };
+      } catch (e) { /* 备忘失败不影响使用 */ }
     }
 
     /* ---- 每日推荐：榜单曲目 ---- */
@@ -785,9 +802,32 @@
       });
     }
 
+    /* ---- 换页回来：先看上次的备忘（秒回画面），再退回磁盘缓存，最后才走网络 ---- */
+    var memo = (window.__hjyHomeMemo && window.__hjyHomeMemo.day === dayKey()) ? window.__hjyHomeMemo : null;
+
     /* ---- 初始化：按日期轮换榜单；有今日缓存就直接用 ---- */
     (function initDaily() {
       dailyChart = DAILY_CHARTS[dayKey() % DAILY_CHARTS.length];
+      if (memo) {
+        chartCache = memo.chart || {};
+        dailyPrefetch = memo.pf || {};
+        if (memo.daily) {
+          dailyList = memo.daily.list || [];
+          dailyOffset = memo.daily.off || 0;
+          if (memo.daily.len) dailyChartLen = memo.daily.len;
+        }
+        searchCache = memo.cache || {};
+        searchKw = memo.kw || "";
+        searchPage = memo.page || 1;
+        lastView = memo.lastView || "home";
+        if (memo.view) musicView = memo.view;
+        if (memo.favPlayable) { favPlayable = memo.favPlayable; favChecked = true; }
+        if (dailyList.length || musicView !== "home") {
+          renderMusic();
+          if (musicView === "home") { loadHint.hidden = true; schedulePrefetch(dailyOffset); }
+          return;                       /* 回主页是「回到刚才」，不重新拉资料 */
+        }
+      }
       try {
         var c = JSON.parse(localStorage.getItem(DAILY_CACHE_KEY));
         if (c && c.v === 4 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
