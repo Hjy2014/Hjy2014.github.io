@@ -51,12 +51,13 @@
       <div class="game-modal-head">
         <p class="game-modal-title" id="gameModalTitle"></p>
         <div class="game-modal-actions">
-          <a class="game-modal-open" id="gameModalNewTab" target="_blank" rel="noopener" title="在新标签页全屏玩">↗ 新窗口</a>
+          <button class="game-modal-min" id="gameModalMin" title="最小化到右下角，稍后继续玩">— 最小化</button>
+          <button class="game-modal-open" id="gameModalFull" title="网页内放大成全屏">⛶ 全屏</button>
           <button class="game-modal-close" id="gameModalClose" aria-label="关闭游戏">✕</button>
         </div>
       </div>
       <div class="game-modal-stage" id="gameModalStage"></div>
-      <p class="game-modal-tip">提示：点 ▶ 绿旗开始 · 全屏按钮在播放器右下角 · 关闭后停止游戏</p>
+      <p class="game-modal-tip">提示：点 ▶ 绿旗开始 · 最小化后右下角点一下继续玩 · 关闭后停止游戏</p>
     </div>
   </div>
 
@@ -80,7 +81,6 @@
       var modal = document.getElementById("gameModal");
       var modalTitle = document.getElementById("gameModalTitle");
       var modalStage = document.getElementById("gameModalStage");
-      var modalNewTab = document.getElementById("gameModalNewTab");
       var EMOJI = ["🐱", "🚀", "⚽", "🕹️", "🏰", "🐍", "🐟", "🎲", "👾", "🏎️", "🧩", "⚡"];
 
       function fileUrl(f) {
@@ -98,7 +98,6 @@
         card.innerHTML =
           '<span class="game-card2-icon">' + EMOJI[(g.i || idx) % EMOJI.length] + "</span>" +
           '<span class="game-card2-name"></span>' +
-          '<span class="game-card2-meta"><b>' + (g.e || "") + "</b></span>" +
           '<span class="game-card2-play">▶ 开始游戏</span>';
         card.querySelector(".game-card2-name").textContent = g.n;
         card.addEventListener("click", function () { openGame(g); });
@@ -127,7 +126,7 @@
       function openGame(g) {
         var url = fileUrl(g.f);
         modalTitle.textContent = g.n;
-        modalNewTab.href = "https://turbowarp.org/?project_url=" + encodeURIComponent(url);
+        modal.classList.remove("min");
         modalStage.innerHTML =
           '<iframe src="https://turbowarp.org/embed?project_url=' + encodeURIComponent(url) +
           '&autoplay&settings-button" width="482" height="412" allowtransparency="true" frameborder="0" ' +
@@ -137,12 +136,36 @@
       }
       function closeGame() {
         modal.hidden = true;
+        modal.classList.remove("min");
         modalStage.innerHTML = "";   /* 移除 iframe = 停止游戏和声音 */
         document.body.style.overflow = "";
       }
+      /* 最小化：弹窗缩到右下角，游戏进程保留，稍后点一下继续 */
+      function minimizeGame() {
+        modal.classList.add("min");
+        document.body.style.overflow = "";   /* 释放页面滚动，可以随便逛 */
+      }
+      function restoreGame() {
+        modal.classList.remove("min");
+        document.body.style.overflow = "hidden";
+      }
       document.getElementById("gameModalClose").addEventListener("click", closeGame);
-      modal.addEventListener("click", function (e) { if (e.target === modal) closeGame(); });
-      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeGame(); });
+      document.getElementById("gameModalMin").addEventListener("click", minimizeGame);
+      document.getElementById("gameModalFull").addEventListener("click", function () {
+        if (document.fullscreenElement) { document.exitFullscreen(); return; }
+        if (modalStage.requestFullscreen) modalStage.requestFullscreen();
+      });
+      /* 最小化状态下点小窗任意非按钮位置 = 恢复 */
+      modal.addEventListener("click", function (e) {
+        if (modal.classList.contains("min")) {
+          if (!e.target.closest("button")) restoreGame();
+          return;
+        }
+        if (e.target === modal) closeGame();
+      });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !modal.hidden && !modal.classList.contains("min")) closeGame();
+      });
 
       /* ---- 搜索 ---- */
       var timer = null;
@@ -164,8 +187,11 @@
       fetch("games/games.json", { cache: "no-cache" })
         .then(function (r) { return r.json(); })
         .then(function (list) {
-          list.sort(function (a, b) { return b.s - a.s; });   /* 大文件排前面 */
-          GAMES = list;
+          var pinned = [];    /* t:1 置顶游戏（保持清单顺序） */
+          var rest = [];
+          list.forEach(function (g) { (g.t ? pinned : rest).push(g); });
+          rest.sort(function (a, b) { return b.s - a.s; });   /* 其余大文件排前面 */
+          GAMES = pinned.concat(rest);
           GAMES.forEach(function (g, i) {
             g.i = i;
             g.e = (g.f.split(".").pop() || "").toUpperCase();
