@@ -1,0 +1,368 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<meta charset="UTF-8">
+<title>保护能量核心1.0|中国少儿编程网</title>
+<meta name="description" content="scratch作品展示_保护能量核心1.0">
+<meta name="keywords" content="scratch3.0作品,sb,sb2,sb3">
+<link href="/Public/Home/css/reset.css" rel="stylesheet">
+<link href="/Public/Home/css/screen.css" rel="stylesheet">
+<link href="/Public/Home/css/lb.css" rel="stylesheet">
+<link rel="stylesheet" href="http://cdn.bootcss.com/font-awesome/4.3.0/css/font-awesome.min.css">
+<!-- Le HTML5 shim, for IE6-8 support of HTML5 elements -->
+<!--[if lt IE 9]>
+<script src="/Public/static/bootstrap/js/html5shiv.js"></script>
+<![endif]-->
+
+<!--[if lt IE 9]>
+<script type="text/javascript" src="/Public/static/jquery-1.10.2.min.js"></script>
+<![endif]-->
+<!--[if gte IE 9]><!-->
+<script type="text/javascript" src="/Public/static/jquery-2.0.3.min.js"></script>
+<script type="text/javascript" src="/Public/Home/js/base.js"></script>
+<script type="text/javascript" src="/Public/Home/js/lb.js"></script>
+<!--<![endif]-->
+<!-- 页面header钩子，一般用于加载插件CSS文件和代码 -->
+<meta />
+</head>
+<body style="background:url(/Public/Home/images/bj.jpg) no-repeat top center #fee5c7;">
+	<!-- 头部 -->
+	<!-- start header -->
+<div id="zp_header">
+  <div class="zp_m w_1170">
+    <div class="row">
+      <div class="col-sm-12">
+        <h1>中国少儿编程网</h1>
+      </div>
+     <div class="col-sm-13 p_t_bai"> 
+	 <a href="/">网站首页</a> 
+	 <a href="/product/scratchpro.html">全部</a> 
+	 <a href="/product/scratch/0">动画</a> 
+	 <a href="/product/scratch/1">游戏</a>
+	 <a href="/product/scratch/2">音乐</a>
+	 <a href="/product/scratch/3">故事</a>
+	 <a href="/product/scratch/4">科学</a>
+	 <a href="/product/scratch/5">编程大作战</a>
+	 </div>
+    </div>
+  </div>
+
+  </div>
+</div>
+	<!-- /头部 -->
+	
+	<!-- 主体 -->
+	
+
+   <!-- start navigation -->
+<link href="/Public/Home/css/s3.css" rel="stylesheet" type="text/css" /> 
+<div id="content" class="p_b">
+  <div class="w_1170 bj zp_bj zp_m_bj">
+       <div class="zp_title zp_t"><h2>保护能量核心1.0</h2><span>作者：匿名  
+	   于2019-02-18日分享在：<a href="/product/scratchpro.html" title="scratch作品专区" style="font-size:14px;color: #c3914b;">作品专区</a>-<a href="/product/scratch/1" title="scratch作品专区" style="color:#c3914b;font-size:14px;">
+	   游戏</a>
+	   </span></div>
+       <div style="height: 500px;padding-top: 10px;">
+        <div id="box" class="container">
+		<div style="background:#F0EEF5; height:30px">
+			<span class="right">
+			<img src="/Public/Home/images/flag.svg" height="20" id="start-button"/>&nbsp;&nbsp;
+			<img src="/Public/Home/images/stop.svg" height="20" id="stop-button"/>&nbsp;
+			</span>
+		</div>
+		<div id="loading" class="container2">
+			<img src="/Public/Home/images/loading.gif" width=""  id=""/>
+		</div>
+		<canvas id="scratch-stage"></canvas>
+	</div>
+       </div>
+       <div class="zp_et">
+        <ul class="zp_l left">
+         <li><a href="#">作品说明</a></li>
+        <!--  <li><a href="#">创作过程</a></li>
+         <li><a href="#">资源下载</a></li> -->
+        </ul>
+        <ul class="zp_r right">
+			<li><span><a style="color: white;padding-top: 0px;" href="/product/downloadfile/id/7040/g/" title="保护能量核心1.0" target="_blank">下载</a></span></li>
+          	<li><i class="fa fa-download" style="color: white;font-size: 1.5em"></i></li>
+        	<li><span>5105</span></li>
+          	<li><i class="fa fa-eye" style="color: white;font-size: 1.5em"></i></li>
+          	<li><span id="dingnum">6</span></li>
+          	<li id="btn"><i id = "scratch_pro-7040" class="fa fa-heart-o iconfont" style="color: white;font-size: 1.5em"></i></li>
+			<li><span id="favnum">2</span></li>
+          	<li id="btnfav"><i id = "7040" class="fa fa-star-o iconfont" style="color:white;font-size: 1.5em"></i></li>
+			<li><span><a style="color: white;padding-top: 0px;" href="/user/addpro/cate_id/50/pid/0/model_id/9.html" title="上传scratch作品" target="_blank">上传我的作品</a></span></li>
+          	<li><i class="fa fa-upload iconfont" style="color:white;font-size: 1.5em"></i></li>
+        </ul>
+       </div>
+       <div class="zp_ec">
+        <p></p>
+        <p>  我是初一的一名学生，希望能投稿让同学们帮忙修改，谢谢。</p>
+        <p></p>
+       </div>  
+       <div class="ill_add">
+            <div class="table-evalu2 tab-show3">
+                    <table>
+                        <tbody><tr>
+                            <th width="100">共有1条评论</th>
+                            <th width=""></th>
+                        </tr>
+                        <tr>
+	                            <td class="c1">
+	                                										 <img src="/Uploads/avatar/100/head.png" width="50" height="50">
+										<p><a href="javascript:void(0);">网友：嘟嘟</a></p>	                            </td>
+	                            <td class="c2">
+	                                <div class="txt">
+	                                    <p>这是scratch3.0的。</p><p style="float: right"><a href="javascript:void(0);" id="diggbutton" onclick="diggcomment(1343);">顶 (<span id="diggcont_1343" style="margin-left: 2px;">5</span>)</a><span>2019-02-18 22:07:48</span></p>
+	                                </div>
+	                            </td>
+	                            
+	                        </tr>  
+                    </tbody></table>
+                    
+                </div>
+			<form action="/addons/execute/_addons/comment/_controller/comment/_action/savedata.html" class="commentForm" method = "post">
+				<input type="hidden" class="" name="model_id" id="model_id" value="9" />
+				<input type="hidden" class="" name="cid" id="cid" value="7040" />
+				<input type="hidden" class="" name="pid" id="pid" value="0" />
+				<div class="iad_in">
+					<span class="titl">我是 ：桜花树下宇焉酱</span>
+					 					
+				</div>
+				
+				<div class="iad_content">
+					<textarea rows="13" name="comment" id="comment" class="" style="width:100%;"></textarea>
+				</div>
+				
+				<div class="iad_in">
+					<input type="text" id="inputPassword" class="text title" placeholder="请输入验证码"  errormsg="请填写5位验证码" nullmsg="请填写验证码" datatype="*5-5" name="verify">
+					<img class="verifyimg reloadverify" alt="点击切换" src="/User/verify.html" style="cursor:pointer;">
+				</div>
+				<div class="controls Validform_checktip text-warning"></div>
+				<input type="submit" class="iad_sub ajax-post" target-form = "commentForm" value="立即发布">
+					
+			</form>	
+		</div>
+		<script type="text/javascript">
+function diggcomment(id){
+		$.ajax({
+			async : false,
+			type: 'POST',
+			dataType:'json',
+			url: "/addons/execute/_addons/comment/_controller/comment/_action/diggit.html",
+			data : {'id':id},
+			success : function (r) {
+			  if(r.status){
+				var diggs = parseInt($('#diggcont_'+id).html()) + 1;
+				$('#diggcont_'+id).html(diggs);
+			  }else{
+				 alert(r.info);
+			  }
+			},
+			error :function (r){
+				 alert("嘛情况？顶歪了！");
+			}
+	});
+}
+
+function replyclick(id){
+	$.each($('.replybox'), function(i,n){
+		 $(this).html('');
+	});
+	$('#replybox_'+ id).html($('#commentformbox').html());
+	$('#replybox_'+ id + ' #pid').val(id);
+	$('#replybox_'+ id + ' #commentformtitle').html('发表回复');
+	$('#replybox_'+ id + ' .btn').html('回复');
+	$('#replybox_'+ id).toggle();
+}
+
+
+</script>
+	<script type="text/javascript">
+
+    	$(document)
+	    	.ajaxStart(function(){
+	    		$("button:submit").addClass("log-in").attr("disabled", true);
+	    	})
+	    	.ajaxStop(function(){
+	    		$("button:submit").removeClass("log-in").attr("disabled", false);
+	    	});
+
+
+    	$("form").submit(function(){
+    		var self = $(this);
+    		$.post(self.attr("action"), self.serialize(), success, "json");
+    		return false;
+
+    		function success(data){
+    			if(data.status){
+    				alert(data.info);
+    				window.location.href = data.url;
+    			} else {
+    				self.find(".Validform_checktip").text(data.info);
+    				//刷新验证码
+    				$(".reloadverify").click();
+    			}
+    		}
+    	});
+
+		$(function(){
+			var verifyimg = $(".verifyimg").attr("src");
+            $(".reloadverify").click(function(){
+                if( verifyimg.indexOf('?')>0){
+                    $(".verifyimg").attr("src", verifyimg+'&random='+Math.random());
+                }else{
+                    $(".verifyimg").attr("src", verifyimg.replace(/\?.*$/,'')+'?'+Math.random());
+                }
+            });
+		});
+	</script> 
+  </div> 
+</div>
+
+	<!-- /主体 -->
+
+	<!-- 底部 -->
+	<div id="footer">
+  <div class="foot_t">
+    <div class="w_1170">
+      <div class="sq left b_color m_20">
+        <div class="sq_top">关于我们</div>
+        <ul class="zx_wz">
+          <li>
+            <p><a target="_blank" href="/about/report">媒体报道</a></p>
+          </li>
+          <li>
+            <p><a target="_blank" href="/about/about">关于我们</a></p>        
+          </li>
+          <!-- <li>
+            <p><a target="_blank" href="/about/contact">联系我们</a></p>       
+          </li> -->
+        </ul>
+      </div>
+      <div class="sq left b_color m_20">
+        <div class="sq_top">投稿&合作</div>
+        <div class="bqy"> <span><a >support@kidscode.cn</a></span></div>
+      </div>
+      <div class="sq left b_color">
+        <div class="sq_top">友情链接</div>
+        <ul class="zx_wz">
+          <li>
+            <p><a >北京一恒时代文化发展有限公司</a></p>
+          </li>
+          <li>
+            <p><a >猫爪信息技术有限公司</a></p>
+          </li>
+ 		  <li>
+		  <p>
+			<script>window["\x64\x6f\x63\x75\x6d\x65\x6e\x74"]["\x77\x72\x69\x74\x65"]('\x3c\x61 \x68\x72\x65\x66\x3d\x22\x68\x74\x74\x70\x3a\x2f\x2f\x77\x77\x77\x2e\x70\x76\x70\x69\x6e\x2e\x63\x6f\x6d\x22 \x74\x61\x72\x67\x65\x74\x3d\x22\x5f\x62\x6c\x61\x6e\x6b\x22\x3e\u6211\u7684\u4e16\u754c\u7f16\u7a0b\x3c\x2f\x61\x3e')</script>&nbsp;&nbsp;&nbsp;&nbsp;
+				<script>window["\x64\x6f\x63\x75\x6d\x65\x6e\x74"]["\x77\x72\x69\x74\x65"]('\x3c\x61\x20\x68\x72\x65\x66\x3d\x22\x68\x74\x74\x70\x73\x3a\x2f\x2f\x62\x69\x74\x6d\x6f\x6e\x6b\x65\x79\x2e\x63\x6e\x22\x20\x74\x61\x72\x67\x65\x74\x3d\x22\x5f\x62\x6c\x61\x6e\x6b\x22\x3e\x26\x23\x32\x37\x36\x30\x34\x3b\x26\x23\x32\x39\x33\x30\x35\x3b\x26\x23\x32\x39\x34\x39\x32\x3b\x26\x23\x32\x30\x37\x39\x39\x3b\x26\x23\x33\x31\x34\x36\x31\x3b\x26\x23\x33\x32\x35\x33\x34\x3b\x26\x23\x33\x31\x32\x34\x33\x3b\x3c\x2f\x61\x3e')</script>
+			</p>
+		  </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="foot_d"> copyright © 2014-2019中国少儿编程网 | <a href="http://www.miitbeian.gov.cn" title="" style="color: #59544e">陕ICP备14010934号</a>  </div>
+</div>
+
+<script type="text/javascript">
+(function(){
+	var ThinkPHP = window.Think = {
+		"ROOT"   : "", //当前网站地址
+		"APP"    : "", //当前项目地址
+		"PUBLIC" : "/Public", //项目公共目录地址
+		"DEEP"   : "/", //PATHINFO分割符
+		"MODEL"  : ["2", "1", "html"],
+		"VAR"    : ["m", "c", "a"]
+	}
+})();
+</script>
+
+<script type="text/javascript" src="/Public/static/Base.js"></script>
+<script type="text/javascript" src="/Public/static/jquery.cdn.min.js"></script>
+<script type="text/javascript" src="/Public/Home/js/common.js"></script>
+<script type="text/javascript" src="/Public/Home/js/kidscode-m.js"></script>
+ <!-- 用于加载js代码 -->
+<!-- 页面footer钩子，一般用于加载插件JS文件和JS代码 -->
+<div class="hidden"><!-- 用于加载统计代码等隐藏元素 -->
+	<!--百度统计-->
+	<script>
+	var _hmt = _hmt || [];
+	(function() {
+	  var hm = document.createElement("script");
+	  hm.src = "//hm.baidu.com/hm.js?004f8ccea9b591829b48132346a7944e";
+	  var s = document.getElementsByTagName("script")[0]; 
+	  s.parentNode.insertBefore(hm, s);
+	})();
+	</script>
+	<!--百度连接提交-->
+	<script>
+	(function(){
+		var bp = document.createElement('script');
+		bp.src = '//push.zhanzhang.baidu.com/push.js';
+		var s = document.getElementsByTagName("script")[0];
+		s.parentNode.insertBefore(bp, s);
+	})();
+	</script>
+	
+</div>
+<!-- 代码 开始 -->
+<div class="go-top" id="f-top" style="display: block;">
+    <a style="" href="javascript:;" class="uc-2vm"></a>
+	<div class="uc-2vm-pop dn">
+		<!-- <span class="title-2wm">用微信扫一扫</span> -->
+		<div class="logo-2wm-box">
+			<img src="/Public/Home/images/weixin.jpg" alt="中国少儿编程网" width="200" height="200">
+		</div>
+	</div>
+   <div id="go-top">
+    <a href="javascript:;" class="go"></a>
+	</div>
+</div>
+
+<script>
+$(function(){
+	$(window).on('scroll',function(){
+		var st = $(document).scrollTop();
+		if( st>0 ){
+			if( $('#main-container').length != 0  ){
+				var w = $(window).width(),mw = $('#main-container').width();
+				if( (w-mw)/2 > 70 )
+					$('#go-top').css({'left':(w-mw)/2+mw+20});
+				else{
+					$('#go-top').css({'left':'auto'});
+				}
+			}
+			$('#go-top').fadeIn(function(){
+				$(this).removeClass('dn');
+			});
+		}else{
+			$('#go-top').fadeOut(function(){
+				$(this).addClass('dn');
+			});
+		}	
+	});
+	$('#go-top .go').on('click',function(){
+		$('html,body').animate({'scrollTop':0},500);
+	});
+
+	$('#f-top .uc-2vm').hover(function(){
+		$('#f-top .uc-2vm-pop').removeClass('dn');
+	},function(){
+		$('#f-top .uc-2vm-pop').addClass('dn');
+	});
+});
+</script>
+<!-- 代码 结束 -->
+	<!-- /底部 -->
+<script>
+	(function(){
+		var bp = document.createElement('script');
+		bp.src = '//push.zhanzhang.baidu.com/push.js';
+		var s = document.getElementsByTagName("script")[0];
+		s.parentNode.insertBefore(bp, s);
+	})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scratch 小游戏 · 胡建宇</title>
-  <meta name="description" content="胡建宇的 Scratch 小游戏合集，在线直接玩。" />
+  <meta name="description" content="胡建宇的 Scratch 小游戏合集，1600+ 个游戏在线直接玩，支持搜索。" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -13,35 +13,173 @@
   <section class="games-hero">
     <div class="container">
       <h1>🎮 Scratch 小游戏</h1>
-      <p>自己用 Scratch 做的小游戏，点开即玩～</p>
+      <p id="gamesSubtitle">游戏加载中…</p>
     </div>
   </section>
 
-  <!-- 游戏列表（新游戏往这里加） -->
-  <section class="section" id="games">
+  <!-- 搜索栏 + 随机按钮 -->
+  <section class="section games-list-section">
     <div class="container">
-      <div class="games-grid" id="gamesGrid">
-        <!--
-          以后每加一个游戏，复制一份下面的结构：
-          <div class="game-card">
-            <h3>游戏名称</h3>
-            <iframe src="https://turbowarp.org/embed.html#<项目链接>" ...></iframe>
-          </div>
-        -->
+      <div class="game-toolbar">
+        <div class="game-search">
+          <span class="game-search-icon">🔍</span>
+          <input type="search" id="gameSearch" placeholder="输入游戏名字，一键搜索（比如：玛丽、坦克、僵尸）" autocomplete="off" />
+          <button class="game-search-clear" id="gameSearchClear" hidden title="清空搜索">✕</button>
+        </div>
+        <button class="btn btn-primary game-random" id="gameRandom" title="随机挑一个游戏开玩">🎲 随机来一个</button>
       </div>
-      <div class="games-empty">
-        <div class="games-empty-icon">🐱</div>
-        <h2>更多小游戏，敬请期待</h2>
-        <p>我正在加紧制作中，记得常回来看看哦～</p>
-        <a class="btn btn-primary" href="index.html">返回主页</a>
+      <p class="game-count" id="gameCount"></p>
+
+      <!-- 游戏网格（JS 从 games.json 动态渲染） -->
+      <div class="game-grid2" id="gamesGrid"></div>
+
+      <div class="games-more-wrap">
+        <button class="btn btn-outline" id="gamesMore" hidden>加载更多 ↓</button>
+      </div>
+
+      <div class="games-empty" id="gamesEmpty" hidden>
+        <div class="games-empty-icon">🔍</div>
+        <h2>没找到这个游戏</h2>
+        <p>换个关键词试试吧～</p>
       </div>
     </div>
   </section>
+
+  <!-- 游戏播放弹窗 -->
+  <div class="game-modal-mask" id="gameModal" hidden>
+    <div class="game-modal" role="dialog" aria-modal="true">
+      <div class="game-modal-head">
+        <p class="game-modal-title" id="gameModalTitle"></p>
+        <div class="game-modal-actions">
+          <a class="game-modal-open" id="gameModalNewTab" target="_blank" rel="noopener" title="在新标签页全屏玩">↗ 新窗口</a>
+          <button class="game-modal-close" id="gameModalClose" aria-label="关闭游戏">✕</button>
+        </div>
+      </div>
+      <div class="game-modal-stage" id="gameModalStage"></div>
+      <p class="game-modal-tip">提示：点 ▶ 绿旗开始 · 全屏按钮在播放器右下角 · 关闭后停止游戏</p>
+    </div>
+  </div>
 
   <footer class="footer">
     <p>© <span id="year"></span> 胡建宇 · 用 ❤️ 与好奇心 构建 · 托管于 GitHub Pages</p>
   </footer>
 
+  <script>
+    /* ===== Scratch 游戏库：搜索 + 弹窗播放 ===== */
+    (function () {
+      var GAMES = [];
+      var shown = 0;
+      var CHUNK = 48;
+      var grid = document.getElementById("gamesGrid");
+      var searchInput = document.getElementById("gameSearch");
+      var searchClear = document.getElementById("gameSearchClear");
+      var moreBtn = document.getElementById("gamesMore");
+      var emptyBox = document.getElementById("gamesEmpty");
+      var countEl = document.getElementById("gameCount");
+      var subEl = document.getElementById("gamesSubtitle");
+      var modal = document.getElementById("gameModal");
+      var modalTitle = document.getElementById("gameModalTitle");
+      var modalStage = document.getElementById("gameModalStage");
+      var modalNewTab = document.getElementById("gameModalNewTab");
+      var EMOJI = ["🐱", "🚀", "⚽", "🕹️", "🏰", "🐍", "🐟", "🎲", "👾", "🏎️", "🧩", "⚡"];
+
+      function sizeText(kb) {
+        return kb >= 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB";
+      }
+      function fileUrl(f) {
+        return "https://hjy2014.github.io/games/files/" + f;
+      }
+      function filtered() {
+        var kw = searchInput.value.trim().toLowerCase();
+        if (!kw) return GAMES;
+        return GAMES.filter(function (g) { return g.n.toLowerCase().indexOf(kw) >= 0; });
+      }
+      function makeCard(g, idx) {
+        var card = document.createElement("button");
+        card.className = "game-card2";
+        card.type = "button";
+        card.innerHTML =
+          '<span class="game-card2-icon">' + EMOJI[(g.i || idx) % EMOJI.length] + "</span>" +
+          '<span class="game-card2-name"></span>' +
+          '<span class="game-card2-meta"><b>' + (g.e || "") + "</b> · " + sizeText(g.s) + "</span>" +
+          '<span class="game-card2-play">▶ 开始游戏</span>';
+        card.querySelector(".game-card2-name").textContent = g.n;
+        card.addEventListener("click", function () { openGame(g); });
+        return card;
+      }
+      function render(reset) {
+        if (reset) { grid.innerHTML = ""; shown = 0; }
+        var list = filtered();
+        var end = Math.min(shown + CHUNK, list.length);
+        for (var i = shown; i < end; i++) {
+          var c = makeCard(list[i], i);
+          c.style.animationDelay = Math.min((i - shown) * 30, 300) + "ms";
+          grid.appendChild(c);
+        }
+        shown = end;
+        moreBtn.hidden = shown >= list.length;
+        emptyBox.hidden = list.length !== 0;
+        countEl.textContent = kwText(list.length);
+      }
+      function kwText(n) {
+        var kw = searchInput.value.trim();
+        return (kw ? "搜索「" + kw + "」：" : "全部游戏：") + n + " 个";
+      }
+
+      /* ---- 弹窗播放 ---- */
+      function openGame(g) {
+        var url = fileUrl(g.f);
+        modalTitle.textContent = g.n;
+        modalNewTab.href = "https://turbowarp.org/?project_url=" + encodeURIComponent(url);
+        modalStage.innerHTML =
+          '<iframe src="https://turbowarp.org/embed?project_url=' + encodeURIComponent(url) +
+          '&autoplay&settings-button" width="482" height="412" allowtransparency="true" frameborder="0" ' +
+          'scrolling="no" allowfullscreen="" style="color-scheme:auto" loading="lazy"></iframe>';
+        modal.hidden = false;
+        document.body.style.overflow = "hidden";
+      }
+      function closeGame() {
+        modal.hidden = true;
+        modalStage.innerHTML = "";   /* 移除 iframe = 停止游戏和声音 */
+        document.body.style.overflow = "";
+      }
+      document.getElementById("gameModalClose").addEventListener("click", closeGame);
+      modal.addEventListener("click", function (e) { if (e.target === modal) closeGame(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !modal.hidden) closeGame(); });
+
+      /* ---- 搜索 ---- */
+      var timer = null;
+      searchInput.addEventListener("input", function () {
+        searchClear.hidden = !searchInput.value;
+        clearTimeout(timer);
+        timer = setTimeout(function () { render(true); window.scrollTo(0, 0); }, 180);
+      });
+      searchClear.addEventListener("click", function () {
+        searchInput.value = ""; searchClear.hidden = true; render(true);
+      });
+      document.getElementById("gameRandom").addEventListener("click", function () {
+        if (!GAMES.length) return;
+        openGame(GAMES[Math.floor(Math.random() * GAMES.length)]);
+      });
+      moreBtn.addEventListener("click", function () { render(false); });
+
+      /* ---- 载入清单 ---- */
+      fetch("games/games.json", { cache: "no-cache" })
+        .then(function (r) { return r.json(); })
+        .then(function (list) {
+          GAMES = list;
+          GAMES.forEach(function (g, i) {
+            g.i = i;
+            g.e = (g.f.split(".").pop() || "").toUpperCase();
+          });
+          subEl.textContent = GAMES.length + " 个游戏在线玩 · 点卡片即开 · 支持搜索";
+          render(true);
+        })
+        .catch(function () {
+          subEl.textContent = "游戏清单加载失败，请刷新重试～";
+        });
+    })();
+  </script>
   <script src="js/main.js"></script>
 </body>
 </html>
