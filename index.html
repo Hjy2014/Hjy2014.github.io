@@ -8,7 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body data-page="home">
   <!-- 导航 -->
   <header class="navbar" id="navbar">
     <div class="container nav-inner">
@@ -99,12 +99,12 @@
     <div class="container">
       <h2 class="section-title reveal">我的小作品</h2>
       <div class="projects-grid reveal">
-        <article class="project-card project-link" onclick="location.href='games.html'">
+        <a class="project-card project-link" href="games.html">
           <div class="project-thumb thumb-a">🐱</div>
           <h3>Scratch 小游戏</h3>
           <p>1600+ 个 Scratch 游戏合集，可搜索，点进来直接玩！</p>
           <div class="tags"><span>Scratch</span><span>游戏</span></div>
-        </article>
+        </a>
         <article class="project-card">
           <div class="project-thumb thumb-b">🎮</div>
           <h3>像素小游戏合集</h3>
@@ -200,38 +200,8 @@
     <p>© <span id="year"></span> 胡建宇 · 用 ❤️ 与好奇心 构建 · 托管于 GitHub Pages</p>
   </footer>
 
-  <!-- 悬浮播放窗（可拖动） -->
-  <div class="player-float" id="playerBar" hidden>
-    <div class="pf-head">
-      <img class="pf-art" id="plArt" alt="" referrerpolicy="no-referrer"
-           onerror="pfImgFallback(this)" />
-      <div class="pl-info">
-        <p class="pl-name" id="plName"></p>
-        <p class="pl-artist" id="plArtist"></p>
-      </div>
-      <p class="pl-lyric" id="plLyric"></p>
-      <button class="pl-close" id="plMin" aria-label="最小化播放器" title="最小化到屏幕左侧">−</button>
-      <button class="pl-close" id="plMax" aria-label="打开播放详情页" title="播放详情页">
-        <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true"><rect x="1.5" y="1.5" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
-      </button>
-      <button class="pl-close" id="plClose" aria-label="关闭播放器" title="关闭并停止播放">✕</button>
-    </div>
-    <div class="pl-progress">
-      <span class="pl-time" id="plCur">0:00</span>
-      <input type="range" id="plSeek" min="0" max="1000" value="0" aria-label="播放进度" />
-      <span class="pl-time" id="plDur">0:00</span>
-    </div>
-    <div class="pf-controls">
-      <button class="pl-btn" id="plPrev" aria-label="上一首">⏮</button>
-      <button class="pl-btn pl-toggle" id="plToggle" aria-label="播放/暂停">▶</button>
-      <button class="pl-btn" id="plNext" aria-label="下一首">⏭</button>
-      <button class="pl-fav" id="plFav" aria-label="收藏">🤍</button>
-    </div>
-    <div class="pf-resize" id="pfResize" aria-label="调整大小" title="拖动调整大小"></div>
-  </div>
-
-  <!-- 最小化后的小球（贴屏幕最左侧） -->
-  <button class="player-mini" id="playerMini" hidden aria-label="展开播放器" title="点我展开播放器">🎵</button>
+  <!-- 悬浮播放窗 / 最小化小球 / 播放详情页 由 js/player.js 注入到常驻层（#hjyRoot），
+       这样站内换页时播放器不会被销毁，音乐可以一直播下去 -->
 
   <!-- 确认弹窗（清空历史 / 清理所选歌曲等危险操作前询问） -->
   <div class="ask-mask" id="askMask" hidden>
@@ -244,46 +214,8 @@
     </div>
   </div>
 
-  <!-- 播放详情页（双击悬浮窗空白处打开）：左封面 / 右歌名+歌词 / 进度条 / 控制键 -->
-  <div class="np-mask" id="npMask" hidden>
-    <div class="np-card" role="dialog" aria-modal="true">
-      <button class="np-close" id="npClose" aria-label="关闭详情页" title="关闭">✕</button>
-      <div class="np-main">
-        <img class="np-art" id="npArt" alt="" referrerpolicy="no-referrer" onerror="pfImgFallback(this)" />
-        <div class="np-right">
-          <p class="np-name" id="npName"></p>
-          <p class="np-artist" id="npArtist"></p>
-          <div class="np-lyrics" id="npLyrics"><p class="np-hint">歌词加载中…</p></div>
-          <div class="np-time"><span id="npCur">0:00</span> / <span id="npDur">0:00</span></div>
-          <input type="range" id="npSeek" min="0" max="1000" value="0" aria-label="播放进度" />
-          <div class="np-controls">
-            <div class="np-ratewrap">
-              <button class="np-btn np-rate" id="npRate" aria-label="倍速播放" title="倍速播放">1x</button>
-              <div class="np-ratepop" id="npRatePop" hidden>
-                <button data-rate="0.5">0.5x</button>
-                <button data-rate="0.75">0.75x</button>
-                <button data-rate="1">1x</button>
-                <button data-rate="1.5">1.5x</button>
-                <button data-rate="2">2x</button>
-                <button data-rate="2.5">2.5x</button>
-                <button data-rate="3">3x</button>
-              </div>
-            </div>
-            <button class="np-btn" id="npPrev" aria-label="上一首">⏮</button>
-            <button class="np-btn np-toggle" id="npToggle" aria-label="播放/暂停">▶</button>
-            <button class="np-btn" id="npNext" aria-label="下一首">⏭</button>
-            <div class="np-volwrap">
-              <button class="np-btn" id="npVol" aria-label="音量" title="音量">🔊</button>
-              <div class="np-volpop" id="npVolPop" hidden>
-                <input type="range" id="npVolBar" min="0" max="100" value="100" aria-label="音量大小" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="js/main.js"></script>
+  <script src="js/site.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/page-home.js"></script>
 </body>
 </html>
