@@ -334,6 +334,7 @@ a { color: inherit; text-decoration: none; }
 .music-search-btn { padding: 11px 26px; border: none; cursor: pointer; flex: none; }
 .music-hint { color: var(--text-muted); font-size: 0.85rem; margin: 12px 0 0; }
 .music-hint2 { font-size: 0.8rem; opacity: 0.72; margin-top: 16px; text-align: center; }
+.music-hint3 { font-size: 0.74rem; opacity: 0.5; margin-top: 12px; text-align: center; }
 .music-status { color: var(--text-muted); font-size: 0.92rem; min-height: 1.6em; margin: 8px 0 12px; }
 .music-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
