@@ -66,6 +66,23 @@
   <div class="rule"></div>
 
   <div class="card">
+    <div class="date"><b>2026-09-21</b><span class="badge">第 5 批 · 计数器校准 + 测试浏览永久免计</span></div>
+    <div class="sec feat">
+      <h2>✨ 功能</h2>
+      <ul>
+        <li><b>访问计数校准为 10</b>：新开了一个带管理密钥的计数器（老计数器创建时没拿到密钥，数值改不了），初始值直接设成 <b>10</b>；管理密钥已留存，以后想再调数值随时可以。</li>
+        <li><b>AI / 测试浏览永久不计入</b>：无头浏览器（UA 含 Headless）直接跳过计数；带 E2E 测试参数打开的页面也跳过。以后我帮你测网站，不会再把数字顶上去。</li>
+      </ul>
+    </div>
+    <div class="sec bug">
+      <h2>🐛 Bug 修复</h2>
+      <ul>
+        <li><b>自动化检测有漏网</b>：之前只查 <code>navigator.webdriver</code>，但这类无头浏览器会报 false（等于没拦住）；补上了 UA 指纹检测，双层拦截。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="date"><b>2026-09-21</b><span class="badge">第 4 批 · 访问计数防刷 + 站长登录记录</span></div>
     <div class="sec feat">
       <h2>✨ 功能</h2>
