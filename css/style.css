@@ -196,6 +196,7 @@ a { color: inherit; text-decoration: none; }
 .user-menu a:hover, .user-menu button:hover { background: var(--primary-soft); color: var(--primary); }
 .menu-admin { color: var(--primary); font-weight: 600; }
 .menu-logout { color: #dc2626; }
+.menu-log { color: #0f766e; }
 
 /* 登录弹窗 */
 #loginModal {
