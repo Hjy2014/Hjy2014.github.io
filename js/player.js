@@ -86,9 +86,14 @@
     var u = (al && al.picUrl) || "";
     return u.replace("http://", "https://") + (u && u.indexOf("?") < 0 ? "?param=240y240" : "");
   }
-  function bigArt(u) {
+  function bigArt(u, size) {
+    size = size || 500;
     u = String(u || "").replace("http://", "https://");
-    return u + (u && u.indexOf("?") < 0 ? "?param=400y400" : "");
+    if (!u) return u;
+    var tag = "param=" + size + "y" + size;
+    if (/param=\d+y\d+/.test(u)) return u.replace(/param=\d+y\d+/, tag); /* 已带小图参数 → 原地升级 */
+    if (u.indexOf("?") < 0) return u + "?" + tag;
+    return u; /* 带别的查询串（代理 URL 等）不敢乱动 */
   }
 
   /* 图片加载失败兜底（卡片内联 onerror 用到，必须是全局函数） */
@@ -524,7 +529,7 @@
         album: t.album || "",
         artwork: t.art ? [
           { src: t.art, sizes: "240x240", type: "image/jpeg" },
-          { src: bigArt(t.art), sizes: "400x400", type: "image/jpeg" },
+          { src: bigArt(t.art, 500), sizes: "500x500", type: "image/jpeg" },
         ] : [],
       });
     } catch (e) { /* 老浏览器忽略 */ }
@@ -902,7 +907,17 @@
   }
   function npFillTrack(t) {
     npArt.dataset.tid = String(t.id);
-    if (t.art) { npArt.dataset.fb = ""; npArt.style.visibility = "visible"; npArt.src = t.art; }
+    if (t.art) {
+      npArt.dataset.fb = ""; npArt.style.visibility = "visible";
+      npArt.src = t.art;                 /* 先显示卡片同款缩略图，别让用户盯着白框等 */
+      var hi = bigArt(t.art, 500);       /* 250px 展示 + 高分屏 2x，500y500 点对点清晰 */
+      if (npArt.dataset.hi !== hi) {
+        npArt.dataset.hi = hi;
+        var im = new Image();            /* 高清图在后台预载，载完再换，无闪烁 */
+        im.onload = function () { if (npArt.dataset.hi === hi) npArt.src = hi; };
+        im.src = hi;
+      }
+    }
     else npArt.style.visibility = "hidden";
     npName.textContent = t.name;
     npName.title = t.name;
@@ -1034,7 +1049,7 @@
       arName.textContent = prof.name || aname || "歌手";
       var alias = (prof.alias || []).join(" / ");
       arAvatar.dataset.fb = "";
-      if (prof.picUrl) { arAvatar.src = bigArt(prof.picUrl); arAvatar.style.visibility = "visible"; }
+      if (prof.picUrl) { arAvatar.src = bigArt(prof.picUrl, 300); arAvatar.style.visibility = "visible"; }
       else arAvatar.style.visibility = "hidden";
       arMetas.textContent = alias ? ("别名：" + alias) : "";
       var stat = [];
