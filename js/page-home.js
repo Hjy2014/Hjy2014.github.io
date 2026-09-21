@@ -126,8 +126,8 @@
           "</div>" +
           '<div class="user-menu" id="userMenu">' +
             (isOwner ? '<a class="menu-admin" href="https://github.com/Hjy2014/Hjy2014.github.io" target="_blank" rel="noopener">🛠 管理网页</a>' : "") +
-            '<button class="menu-logout" id="logoutBtn">退出登录</button>' +
             '<a class="menu-log" href="changelog.html">📝 网站更新日志</a>' +
+            '<button class="menu-logout" id="logoutBtn">退出登录</button>' +
           "</div>";
         var chip = document.getElementById("userChip");
         var menu = document.getElementById("userMenu");
