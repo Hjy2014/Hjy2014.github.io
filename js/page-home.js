@@ -273,12 +273,12 @@
     var VISIT_KEY = "hjy_visited_v2";
     var COUNTER_BASE = "https://abacus.jasoncameron.dev";
     var COUNTER_NS = "hjy2014io";
-    var COUNTER_KEY = "devices";
+    var COUNTER_KEY = "devices-v2";
     (function renderVisitCount() {
       var el = document.getElementById("visitCount");
       if (!el) return;
-      /* 无头浏览器 / 自动化工具直接不计（爬虫、扫描器、E2E 测试都走这条） */
-      if (navigator.webdriver) { el.remove(); return; }
+      /* 无头浏览器 / 自动化工具 / E2E 测试直接不计（爬虫、扫描器、咱们自己的测试都走这条） */
+      if (navigator.webdriver || /Headless/i.test(navigator.userAgent) || /(^|[?&])e2e=1/.test(location.search)) { el.remove(); return; }
       /* 页面脚本会随 pjax 重跑：同一份文档只初始化一次 */
       if (window.__hjyVisitInit) return;
       window.__hjyVisitInit = true;
