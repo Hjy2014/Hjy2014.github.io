@@ -111,7 +111,7 @@
       fullBtn.classList.remove("on");
       modalStage.innerHTML =
         '<iframe src="https://turbowarp.org/embed?project_url=' + encodeURIComponent(url) +
-        /* 不带 allowfullscreen：TurboWarp 自带的方形全屏按钮就不会出现，只保留弹窗头部的圆形全屏键 */
+        /* 不带全屏放行属性：TurboWarp 自带的方形全屏按钮就不会出现，只保留弹窗头部的圆形全屏键 */
         '&autoplay&settings-button" width="482" height="412" allowtransparency="true" frameborder="0" ' +
         'scrolling="no" style="color-scheme:auto" loading="lazy"></iframe>';
       modal.hidden = false;
