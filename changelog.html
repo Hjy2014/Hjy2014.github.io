@@ -24,7 +24,6 @@
 .log-page h1 { font-size: 1.9rem; font-weight: 800; text-align: center; margin-bottom: 6px; }
 .log-page .sub { text-align: center; color: var(--lp-muted); font-size: .92rem; margin-bottom: 10px; }
 .log-page .rule { width: 64px; height: 5px; border-radius: 99px; background: linear-gradient(90deg, var(--lp-primary), #38bdf8); margin: 0 auto 30px; }
-.log-page .note { background: var(--lp-soft); border: 1px solid #dbe3ff; border-radius: 14px; padding: 12px 16px; font-size: .88rem; color: #475569; margin-bottom: 28px; }
 .log-page .card { background: #fff; border: 1px solid var(--lp-border); border-radius: 18px; padding: 22px 22px 18px; margin-bottom: 22px; box-shadow: 0 8px 26px rgba(2,6,23,.06); }
 .log-page .date { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
 .log-page .date b { font-size: 1.15rem; }
@@ -48,7 +47,6 @@
   <h1>📝 修改日志</h1>
   <p class="sub">Hjy.Dev · hjy2014.github.io</p>
   <div class="rule"></div>
-  <p class="note">最新的在最上面；每个日期内<b>功能在上、Bug 修复在下</b>。以后每次改动都会更新这页并发给你。</p>
 
   <div class="card">
     <div class="date"><b>2026-09-21</b><span class="badge">第 3 批 · 登录菜单加更新日志入口</span></div>
@@ -57,6 +55,7 @@
       <ul>
         <li><b>登录后菜单新增「📝 网站更新日志」</b>：点开就是本页；站内无刷新切换，音乐不会中断。</li>
         <li><b>菜单顺序</b>：🛠 管理网页 → 📝 网站更新日志 → 退出登录，<b>「退出登录」排在最底下</b>，更新日志排第二位（普通登录用户则排第一位）。</li>
+        <li><b>删掉日志页顶部的说明条</b>：标题下面直接就是日志卡片，页面更干净。</li>
       </ul>
     </div>
   </div>
