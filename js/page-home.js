@@ -362,6 +362,7 @@
       histTools.hidden = musicView !== "hist";
       histSelect.textContent = histSelMode ? (histSel.size ? "🗑 清理（" + histSel.size + "）" : "取消选择") : "选择";
       histSelect.classList.toggle("danger", histSelMode && histSel.size > 0);
+      histSelect.classList.toggle("circle", !histSelMode); /* 手机端空闲时是圆形，进选择模式文字变长则恢复胶囊 */
       musicGrid.classList.toggle("selecting", musicView === "hist" && histSelMode);
 
       dailyRefresh.hidden = musicView !== "home";
@@ -682,6 +683,7 @@
         else { histSel.add(sid); selCard.classList.add("hist-sel"); }
         histSelect.textContent = histSel.size ? "🗑 清理（" + histSel.size + "）" : "取消选择";
         histSelect.classList.toggle("danger", histSel.size > 0);
+        histSelect.classList.remove("circle");
         return;
       }
       var btn = e.target.closest("[data-act]");
