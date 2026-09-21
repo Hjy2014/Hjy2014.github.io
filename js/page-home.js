@@ -110,9 +110,30 @@
     /* 登录系统（前端演示版） */
     var USER_KEY = "hjy_login_user";
     var OWNER = { user: "hjy2014", pass: "hjy2026" };
+    var LOG_KEY = "hjy_login_log";
     var userArea = document.getElementById("userArea");
 
     function getLoginUser() { return localStorage.getItem(USER_KEY) || ""; }
+
+    /* 登录流水（存在本机浏览器；纯静态站没有服务器，收集不到别的设备） */
+    function recordLogin(u) {
+      try {
+        var arr = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
+        arr.push({
+          t: Date.now(),
+          u: u,
+          dev: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "手机" : "电脑",
+        });
+        if (arr.length > 200) arr = arr.slice(-200);
+        localStorage.setItem(LOG_KEY, JSON.stringify(arr));
+      } catch (e) { /* 存储被禁用时静默跳过 */ }
+    }
+
+    function fmtLogTime(t) {
+      var d = new Date(t), pad = function (n) { return (n < 10 ? "0" : "") + n; };
+      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
+        " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
+    }
 
     function renderUser() {
       if (!userArea) return;
@@ -127,6 +148,7 @@
           '<div class="user-menu" id="userMenu">' +
             (isOwner ? '<a class="menu-admin" href="https://github.com/Hjy2014/Hjy2014.github.io" target="_blank" rel="noopener">🛠 管理网页</a>' : "") +
             '<a class="menu-log" href="changelog.html">📝 网站更新日志</a>' +
+            (isOwner ? '<button class="menu-logins" id="loginsBtn">📋 登录记录</button>' : "") +
             '<button class="menu-logout" id="logoutBtn">退出登录</button>' +
           "</div>";
         var chip = document.getElementById("userChip");
@@ -137,6 +159,9 @@
           localStorage.removeItem(USER_KEY);
           renderUser();
         });
+        if (isOwner) {
+          document.getElementById("loginsBtn").addEventListener("click", openLoginsModal);
+        }
       } else {
         userArea.innerHTML =
           '<button class="user-chip logged-out" id="loginOpen">' +
@@ -171,6 +196,7 @@
         if (!u || !p) { err.textContent = "用户名和密码不能为空"; return; }
         if (u === OWNER.user && p !== OWNER.pass) { err.textContent = "用户名或密码错误"; return; }
         localStorage.setItem(USER_KEY, u);
+        recordLogin(u);
         close();
         renderUser();
       };
@@ -179,6 +205,35 @@
         el.addEventListener("keydown", function (e) { if (e.key === "Enter") submit(); });
       });
       mask.querySelector("#loginUser").focus();
+    }
+
+    /* 站长专看：登录记录弹窗 */
+    function openLoginsModal() {
+      if (document.getElementById("loginsModal")) return;
+      var mask = document.createElement("div");
+      mask.id = "loginsModal";
+      var arr = [];
+      try { arr = JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch (e) {}
+      var rows = arr.length
+        ? arr.slice().reverse().map(function (r) {
+            return "<li>" +
+              '<span class="lg-when">' + fmtLogTime(r.t) + "</span>" +
+              '<span class="lg-user">' + esc(r.u) + "</span>" +
+              '<span class="lg-dev">' + (r.dev || "电脑") + "</span>" +
+              "</li>";
+          }).join("")
+        : '<li class="lg-empty">还没有登录记录</li>';
+      mask.innerHTML =
+        '<div class="login-card logins-card">' +
+          '<button class="login-close" id="loginsClose" aria-label="关闭">✕</button>' +
+          "<h3>📋 登录记录</h3>" +
+          '<p class="logins-note">记录保存在这台设备的浏览器里，只能看到<b>本机</b>登录过的账号（本站是纯静态网页，没有服务器，其他设备上的登录收集不到）。</p>' +
+          '<ul class="logins-list">' + rows + "</ul>" +
+        "</div>";
+      document.body.appendChild(mask);
+      var close = function () { mask.remove(); };
+      mask.addEventListener("click", function (e) { if (e.target === mask) close(); });
+      mask.querySelector("#loginsClose").addEventListener("click", close);
     }
     renderUser();
 
@@ -214,25 +269,48 @@
       mask.querySelector("#contactClose").addEventListener("click", close);
     }
 
-    /* 访问设备数 */
-    var VISIT_KEY = "hjy_visited";
+    /* 访问设备数（防刷版：爬虫/无头不计；新设备要等真人首次交互才算） */
+    var VISIT_KEY = "hjy_visited_v2";
     var COUNTER_BASE = "https://abacus.jasoncameron.dev";
     var COUNTER_NS = "hjy2014io";
-    var COUNTER_KEY = "visitors";
-    (async function renderVisitCount() {
+    var COUNTER_KEY = "devices";
+    (function renderVisitCount() {
       var el = document.getElementById("visitCount");
       if (!el) return;
+      /* 无头浏览器 / 自动化工具直接不计（爬虫、扫描器、E2E 测试都走这条） */
+      if (navigator.webdriver) { el.remove(); return; }
+      /* 页面脚本会随 pjax 重跑：同一份文档只初始化一次 */
+      if (window.__hjyVisitInit) return;
+      window.__hjyVisitInit = true;
       var isNewDevice = !localStorage.getItem(VISIT_KEY);
-      try {
-        var action = isNewDevice ? "hit" : "get";
-        var res = await fetch(COUNTER_BASE + "/" + action + "/" + COUNTER_NS + "/" + COUNTER_KEY);
-        var data = await res.json();
-        if (typeof data.value === "number") {
-          el.innerHTML = "👀 本站已被 <b>" + data.value + "</b> 台不同设备浏览过";
-          localStorage.setItem(VISIT_KEY, "1");
-        } else el.remove();
-      } catch (e) {
-        el.remove();
+      var doCount = async function () {
+        try {
+          var action = isNewDevice ? "hit" : "get";
+          var res = await fetch(COUNTER_BASE + "/" + action + "/" + COUNTER_NS + "/" + COUNTER_KEY);
+          var data = await res.json();
+          if (typeof data.value === "number") {
+            el.innerHTML = "👀 本站已被 <b>" + data.value + "</b> 台不同设备浏览过";
+            if (isNewDevice) localStorage.setItem(VISIT_KEY, "1");
+          } else el.remove();
+        } catch (e) { el.remove(); }
+      };
+      if (isNewDevice) {
+        /* 新设备：等首次真实手势（点击/按键/触摸）再 +1，
+           只加载页面不交互的爬虫、预取、预览请求统统不算 */
+        var counted = false;
+        var mark = function () {
+          if (counted) return;
+          counted = true;
+          window.removeEventListener("pointerdown", mark);
+          window.removeEventListener("keydown", mark);
+          window.removeEventListener("touchstart", mark);
+          doCount();
+        };
+        window.addEventListener("pointerdown", mark);
+        window.addEventListener("keydown", mark);
+        window.addEventListener("touchstart", mark);
+      } else {
+        doCount();
       }
     })();
 
