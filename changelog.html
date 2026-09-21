@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>修改日志 · 胡建宇</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>" />
+<style>
+:root { --primary:#4f46e5; --primary-soft:#eef2ff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --bg:#f8fafc; }
+* { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:linear-gradient(160deg,#f5f6ff 0%,#eef4ff 60%,#f8fafc 100%); color:var(--text); line-height:1.7; padding:32px 16px 64px; }
+.wrap { max-width:760px; margin:0 auto; }
+h1 { font-size:1.9rem; font-weight:800; text-align:center; margin-bottom:6px; }
+.sub { text-align:center; color:var(--muted); font-size:.92rem; margin-bottom:10px; }
+.rule { width:64px; height:5px; border-radius:99px; background:linear-gradient(90deg,var(--primary),#38bdf8); margin:0 auto 30px; }
+.note { background:var(--primary-soft); border:1px solid #dbe3ff; border-radius:14px; padding:12px 16px; font-size:.88rem; color:#475569; margin-bottom:28px; }
+.card { background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 22px 18px; margin-bottom:22px; box-shadow:0 8px 26px rgba(2,6,23,.06); }
+.date { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+.date b { font-size:1.15rem; }
+.badge { font-size:.75rem; font-weight:700; padding:3px 12px; border-radius:99px; background:var(--primary-soft); color:var(--primary); }
+.sec { margin-top:14px; }
+.sec h2 { font-size:1rem; margin-bottom:8px; }
+.sec ul { padding-left:20px; }
+.sec li { font-size:.92rem; color:#334155; margin-bottom:7px; }
+.sec li b { color:var(--text); }
+.feat h2 { color:#059669; }
+.fix h2 { color:#dc2626; }
+.ver { color:var(--muted); font-size:.85rem; }
+hr { border:0; border-top:1px dashed var(--border); margin:16px 0 0; }
+.back { display:block; text-align:center; color:var(--primary); text-decoration:none; font-size:.9rem; margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📝 修改日志</h1>
+  <p class="sub">Hjy.Dev · h j y 2014.github.io</p>
+  <div class="rule"></div>
+  <p class="note">最新的在最上面；每个日期内<b>功能在上、Bug 修复在下</b>。以后每次改动都会更新这页并发给你。</p>
+
+  <div class="card">
+    <div class="date"><b>2026-09-21</b><span class="badge">第 2 批 · 手机端体验 6 连改</span></div>
+    <div class="sec feat">
+      <h2>✨ 功能</h2>
+      <ul>
+        <li><b>游戏弹窗提示语精简</b>：删掉「玩的时候会自动帮你缓冲后面 3 个游戏」（预缓冲功能还在，只是不写了）。</li>
+        <li><b>游戏搜索框占位语精简</b>：删掉「（比如：玛丽、坦克、僵尸）」。</li>
+        <li><b>删除原生方形放大按钮</b>：TurboWarp 自带的 ⛶ 全屏按钮不再显示（iframe 去掉 <code>allowfullscreen</code> 即隐藏），只保留弹窗头部的圆形全屏键 □。</li>
+        <li><b>手机端悬浮播放窗初始大小</b>：约 2/3 屏宽（412px 视口实测 272px），与你截图一致；手动调过的尺寸仍会记住。</li>
+        <li><b>手机端搜索栏与电脑端一致</b>：「搜索」在输入框右侧；「我的收藏 / 历史」自动排到下一行。</li>
+        <li><b>手机端每日推荐两列</b>：不再一列一张大卡片。</li>
+        <li><b>「选择」键变圆形</b>：空闲时 48×48 正圆；进入选择模式文字变长自动恢复胶囊形。</li>
+        <li><b>新增本修改日志</b>（changelog.html / CHANGELOG.md）。</li>
+      </ul>
+    </div>
+    <div class="sec fix">
+      <h2>✅ 验证</h2>
+      <ul>
+        <li>412px 手机视口无头浏览器实测全部通过：搜索同行、收藏换行、网格 2 列、提示语干净、iframe 无 allowfullscreen、悬浮窗布局宽 272px（首帧 250px 是入场动画的 scale 0.92 被量到，动画结束即 272）。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="date"><b>2026-09-21</b><span class="badge">第 1 批 · 游戏库扩容 + 封面高清化</span></div>
+    <div class="sec feat">
+      <h2>✨ 功能</h2>
+      <ul>
+        <li><b>游戏库 1717 → 1866 个</b>：剩余 149 个大文件（约 1.1GB）全部上架。弹钢琴走 zip 无损重打包（23.67MB，资源逐字节一致）；超级粉碎放行 github.com 后走 git push <b>原样上传</b>（33225839 字节与原件完全一致）。</li>
+        <li><b>放大封面清晰化</b>：详情页大封面渐进加载（240 缩略图 → 500×500 无缝替换）；锁屏封面 500×500；歌手头像按 300 取图。</li>
+      </ul>
+    </div>
+    <div class="sec fix">
+      <h2>🐛 Bug 修复</h2>
+      <ul>
+        <li><b>封面高清从未生效</b>：<code>bigArt()</code> 对已带 <code>?param=</code> 的 URL 不追加参数 → 改为原地替换。</li>
+        <li><b>网络设备伪装 401/201/404</b>：超约 34MB 的请求体被拦并伪装成 401，还会伪造 201/404 → 上传后一律校验返回 sha == git hash-object。</li>
+        <li><b>Actions 服务端拼接封档</b>：token 缺 workflow scope，路径含 .github/workflows/ 直接 404。</li>
+        <li><b>Pages 构建延迟伪 404</b>：推完短暂 404 是 hjy-games-2 还在构建，完成即 200。</li>
+        <li>提交信息中文被编码转坏 → 提交信息改用纯 ASCII。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="date"><b>2026-09-20</b><span class="badge">音乐模块大改版</span></div>
+    <div class="sec feat">
+      <h2>✨ 功能</h2>
+      <ul>
+        <li><b>音乐跨页不断播 + 最小化持续播放</b>：站点壳只换页面内容不销毁播放器；<code>&lt;audio&gt;</code> 永不重建；Media Session（锁屏/媒体键可控）；播放现场持久化，刷新也能接着播。</li>
+        <li><b>歌词只换驱动方式</b>：timeupdate + 400ms 定时器双驱动，显示效果完全没变。</li>
+        <li><b>点击歌手名弹歌手页</b>：头像 + 简介 + 热门 50 首 + 「▶ 全部播放」（先过滤无版权歌曲）；三接口并行 + 悬停预取。</li>
+        <li><b>换页显示记忆</b>：主页与游戏页的显示状态挂 window 缓存，回主页 186ms 出卡片、二次往返 10ms。</li>
+        <li>历史记录多选删除、清空确认弹窗；弹窗控制键 Windows 风格（− / □ / ✕）。</li>
+      </ul>
+    </div>
+    <div class="sec fix">
+      <h2>🐛 Bug 修复</h2>
+      <ul>
+        <li><b>site.js boot() 死循环</b>：节点只 push 不摘除 → 先快照再搬移 + try/catch 兜底。</li>
+        <li><b>data-page 属性丢失</b>：同文件并行编辑互相覆盖，页面脚本不执行（音乐卡片 0 个）→ 教训：同一文件修改必须串行。</li>
+        <li><b>弱网下写入空每日缓存</b>：加了 list.length 判断。</li>
+        <li><b>「全部播放」文案未复位</b>、<b>换页后模块级缓存重置导致回主页空白</b>、<b>部署脚本对新文件 404 白等 60s</b>。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="date"><b>更早</b><span class="badge">2026-09-19 及之前</span></div>
+    <div class="sec feat">
+      <h2>✨ 功能</h2>
+      <ul>
+        <li>作品集 + 音乐板块 + 游戏库三页；GitHub Pages 部署链路（Contents API + 凭据管理器）。</li>
+        <li>游戏库三仓库分片架构（主站 + hjy-games-2/3）。</li>
+        <li>音乐模块对接网易云 API：搜索/每日推荐/收藏/历史/分页/歌词，过滤无版权歌曲。</li>
+        <li>悬浮播放窗可拖动、可缩放、位置与缩放持久化。</li>
+      </ul>
+    </div>
+  </div>
+
+  <a class="back" href="index.html">← 返回主页</a>
+</div>
+</body>
+</html>
