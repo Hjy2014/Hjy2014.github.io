@@ -378,9 +378,14 @@ a { color: inherit; text-decoration: none; }
 .music-fav:hover { transform: scale(1.15); }
 
 @media (max-width: 640px) {
-  .music-searchbar { flex-direction: column; }
-  .music-search-btn { width: 100%; }
-  .music-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 14px; }
+  /* 手机端与电脑端一致：搜索按钮在输入框右侧；收藏/历史放不下时自动换到下一行 */
+  .music-searchbar { flex-wrap: wrap; }
+  .music-searchbar input { flex: 1 1 160px; }
+  /* 每日推荐两列（不再一列一个大卡片） */
+  .music-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* 历史记录「选择」键：圆形；进入选择模式后文字较长，自动恢复胶囊形 */
+  #histSelect { flex: none; white-space: nowrap; }
+  #histSelect.circle { width: 48px; height: 48px; padding: 0; border-radius: 50%; font-size: 0.85rem; }
 }
 
 /* 标题行（今日推荐 / 搜索结果 / 我的收藏） */
@@ -522,6 +527,8 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 640px) {
   .player-mini { width: 34px; height: 46px; font-size: 1.15rem; }
+  /* 手机端悬浮窗初始大小：约 2/3 屏宽（未手动缩放过的默认值） */
+  .player-float { width: min(272px, calc(100vw - 96px)); }
 }
 
 /* ============ 联系 ============ */
