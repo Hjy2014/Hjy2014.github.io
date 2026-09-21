@@ -5,37 +5,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>修改日志 · 胡建宇</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐱</text></svg>" />
-<style>
-:root { --primary:#4f46e5; --primary-soft:#eef2ff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --bg:#f8fafc; }
-* { box-sizing:border-box; margin:0; padding:0; }
-body { font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:linear-gradient(160deg,#f5f6ff 0%,#eef4ff 60%,#f8fafc 100%); color:var(--text); line-height:1.7; padding:32px 16px 64px; }
-.wrap { max-width:760px; margin:0 auto; }
-h1 { font-size:1.9rem; font-weight:800; text-align:center; margin-bottom:6px; }
-.sub { text-align:center; color:var(--muted); font-size:.92rem; margin-bottom:10px; }
-.rule { width:64px; height:5px; border-radius:99px; background:linear-gradient(90deg,var(--primary),#38bdf8); margin:0 auto 30px; }
-.note { background:var(--primary-soft); border:1px solid #dbe3ff; border-radius:14px; padding:12px 16px; font-size:.88rem; color:#475569; margin-bottom:28px; }
-.card { background:#fff; border:1px solid var(--border); border-radius:18px; padding:22px 22px 18px; margin-bottom:22px; box-shadow:0 8px 26px rgba(2,6,23,.06); }
-.date { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
-.date b { font-size:1.15rem; }
-.badge { font-size:.75rem; font-weight:700; padding:3px 12px; border-radius:99px; background:var(--primary-soft); color:var(--primary); }
-.sec { margin-top:14px; }
-.sec h2 { font-size:1rem; margin-bottom:8px; }
-.sec ul { padding-left:20px; }
-.sec li { font-size:.92rem; color:#334155; margin-bottom:7px; }
-.sec li b { color:var(--text); }
-.feat h2 { color:#059669; }
-.fix h2 { color:#dc2626; }
-.ver { color:var(--muted); font-size:.85rem; }
-hr { border:0; border-top:1px dashed var(--border); margin:16px 0 0; }
-.back { display:block; text-align:center; color:var(--primary); text-decoration:none; font-size:.9rem; margin-top:8px; }
-</style>
+<link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
+<body data-page="changelog">
+<!-- 样式写在 body 里：站内无刷新换页会把这一段一起搬过去，样式照样生效；
+     所有规则都限制在 .log-page 内，不会影响导航栏、播放器等站内部件。 -->
+<style>
+.log-page, .log-page * { box-sizing: border-box; margin: 0; padding: 0; }
+.log-page {
+  --lp-primary: #4f46e5; --lp-soft: #eef2ff; --lp-text: #0f172a;
+  --lp-muted: #64748b; --lp-border: #e2e8f0;
+  min-height: 100vh;
+  font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  background: linear-gradient(160deg, #f5f6ff 0%, #eef4ff 60%, #f8fafc 100%);
+  color: var(--lp-text); line-height: 1.7; padding: 32px 16px 64px;
+}
+.log-page .wrap { max-width: 760px; margin: 0 auto; }
+.log-page h1 { font-size: 1.9rem; font-weight: 800; text-align: center; margin-bottom: 6px; }
+.log-page .sub { text-align: center; color: var(--lp-muted); font-size: .92rem; margin-bottom: 10px; }
+.log-page .rule { width: 64px; height: 5px; border-radius: 99px; background: linear-gradient(90deg, var(--lp-primary), #38bdf8); margin: 0 auto 30px; }
+.log-page .note { background: var(--lp-soft); border: 1px solid #dbe3ff; border-radius: 14px; padding: 12px 16px; font-size: .88rem; color: #475569; margin-bottom: 28px; }
+.log-page .card { background: #fff; border: 1px solid var(--lp-border); border-radius: 18px; padding: 22px 22px 18px; margin-bottom: 22px; box-shadow: 0 8px 26px rgba(2,6,23,.06); }
+.log-page .date { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.log-page .date b { font-size: 1.15rem; }
+.log-page .badge { font-size: .75rem; font-weight: 700; padding: 3px 12px; border-radius: 99px; background: var(--lp-soft); color: var(--lp-primary); }
+.log-page .sec { margin-top: 14px; }
+.log-page .sec h2 { font-size: 1rem; margin-bottom: 8px; }
+.log-page .sec ul { padding-left: 20px; }
+.log-page .sec li { font-size: .92rem; color: #334155; margin-bottom: 7px; }
+.log-page .sec li b { color: var(--lp-text); }
+.log-page .feat h2 { color: #059669; }
+.log-page .fix h2 { color: #dc2626; }
+.log-page .ver { color: var(--lp-muted); font-size: .85rem; }
+.log-page hr { border: 0; border-top: 1px dashed var(--lp-border); margin: 16px 0 0; }
+.log-page code { font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: .86em; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 5px; padding: 1px 5px; }
+.log-page .back { display: block; text-align: center; color: var(--lp-primary); text-decoration: none; font-size: .9rem; margin-top: 8px; }
+.log-page .back:hover { text-decoration: underline; }
+</style>
+
+<div class="log-page">
 <div class="wrap">
   <h1>📝 修改日志</h1>
-  <p class="sub">Hjy.Dev · h j y 2014.github.io</p>
+  <p class="sub">Hjy.Dev · hjy2014.github.io</p>
   <div class="rule"></div>
   <p class="note">最新的在最上面；每个日期内<b>功能在上、Bug 修复在下</b>。以后每次改动都会更新这页并发给你。</p>
+
+  <div class="card">
+    <div class="date"><b>2026-09-21</b><span class="badge">第 3 批 · 登录菜单加更新日志入口</span></div>
+    <div class="sec feat">
+      <h2>✨ 功能</h2>
+      <ul>
+        <li><b>登录后菜单新增「📝 网站更新日志」</b>：位于「退出登录」下面，点开就是本页；站内无刷新切换，音乐不会中断。</li>
+      </ul>
+    </div>
+  </div>
 
   <div class="card">
     <div class="date"><b>2026-09-21</b><span class="badge">第 2 批 · 手机端体验 6 连改</span></div>
@@ -113,11 +136,13 @@ hr { border:0; border-top:1px dashed var(--border); margin:16px 0 0; }
         <li>游戏库三仓库分片架构（主站 + hjy-games-2/3）。</li>
         <li>音乐模块对接网易云 API：搜索/每日推荐/收藏/历史/分页/歌词，过滤无版权歌曲。</li>
         <li>悬浮播放窗可拖动、可缩放、位置与缩放持久化。</li>
+        <li>登录系统（前端演示版）、访问计数、联系方式。</li>
       </ul>
     </div>
   </div>
 
   <a class="back" href="index.html">← 返回主页</a>
+</div>
 </div>
 </body>
 </html>
