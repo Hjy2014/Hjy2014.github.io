@@ -110,30 +110,9 @@
     /* 登录系统（前端演示版） */
     var USER_KEY = "hjy_login_user";
     var OWNER = { user: "hjy2014", pass: "hjy2026" };
-    var LOG_KEY = "hjy_login_log";
     var userArea = document.getElementById("userArea");
 
     function getLoginUser() { return localStorage.getItem(USER_KEY) || ""; }
-
-    /* 登录流水（存在本机浏览器；纯静态站没有服务器，收集不到别的设备） */
-    function recordLogin(u) {
-      try {
-        var arr = JSON.parse(localStorage.getItem(LOG_KEY)) || [];
-        arr.push({
-          t: Date.now(),
-          u: u,
-          dev: /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "手机" : "电脑",
-        });
-        if (arr.length > 200) arr = arr.slice(-200);
-        localStorage.setItem(LOG_KEY, JSON.stringify(arr));
-      } catch (e) { /* 存储被禁用时静默跳过 */ }
-    }
-
-    function fmtLogTime(t) {
-      var d = new Date(t), pad = function (n) { return (n < 10 ? "0" : "") + n; };
-      return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) +
-        " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
-    }
 
     function renderUser() {
       if (!userArea) return;
@@ -148,7 +127,6 @@
           '<div class="user-menu" id="userMenu">' +
             (isOwner ? '<a class="menu-admin" href="https://github.com/Hjy2014/Hjy2014.github.io" target="_blank" rel="noopener">🛠 管理网页</a>' : "") +
             '<a class="menu-log" href="changelog.html">📝 网站更新日志</a>' +
-            (isOwner ? '<button class="menu-logins" id="loginsBtn">📋 登录记录</button>' : "") +
             '<button class="menu-logout" id="logoutBtn">退出登录</button>' +
           "</div>";
         var chip = document.getElementById("userChip");
@@ -159,9 +137,6 @@
           localStorage.removeItem(USER_KEY);
           renderUser();
         });
-        if (isOwner) {
-          document.getElementById("loginsBtn").addEventListener("click", openLoginsModal);
-        }
       } else {
         userArea.innerHTML =
           '<button class="user-chip logged-out" id="loginOpen">' +
@@ -196,7 +171,6 @@
         if (!u || !p) { err.textContent = "用户名和密码不能为空"; return; }
         if (u === OWNER.user && p !== OWNER.pass) { err.textContent = "用户名或密码错误"; return; }
         localStorage.setItem(USER_KEY, u);
-        recordLogin(u);
         close();
         renderUser();
       };
@@ -207,34 +181,6 @@
       mask.querySelector("#loginUser").focus();
     }
 
-    /* 站长专看：登录记录弹窗 */
-    function openLoginsModal() {
-      if (document.getElementById("loginsModal")) return;
-      var mask = document.createElement("div");
-      mask.id = "loginsModal";
-      var arr = [];
-      try { arr = JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch (e) {}
-      var rows = arr.length
-        ? arr.slice().reverse().map(function (r) {
-            return "<li>" +
-              '<span class="lg-when">' + fmtLogTime(r.t) + "</span>" +
-              '<span class="lg-user">' + esc(r.u) + "</span>" +
-              '<span class="lg-dev">' + (r.dev || "电脑") + "</span>" +
-              "</li>";
-          }).join("")
-        : '<li class="lg-empty">还没有登录记录</li>';
-      mask.innerHTML =
-        '<div class="login-card logins-card">' +
-          '<button class="login-close" id="loginsClose" aria-label="关闭">✕</button>' +
-          "<h3>📋 登录记录</h3>" +
-          '<p class="logins-note">记录保存在这台设备的浏览器里，只能看到<b>本机</b>登录过的账号（本站是纯静态网页，没有服务器，其他设备上的登录收集不到）。</p>' +
-          '<ul class="logins-list">' + rows + "</ul>" +
-        "</div>";
-      document.body.appendChild(mask);
-      var close = function () { mask.remove(); };
-      mask.addEventListener("click", function (e) { if (e.target === mask) close(); });
-      mask.querySelector("#loginsClose").addEventListener("click", close);
-    }
     renderUser();
 
     /* 联系方式弹窗 */
