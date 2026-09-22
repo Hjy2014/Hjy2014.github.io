@@ -220,25 +220,37 @@
     var COUNTER_BASE = "https://abacus.jasoncameron.dev";
     var COUNTER_NS = "hjy2014io";
     var COUNTER_KEY = "devices-v2";
+    function fillVisitCount(n) {
+      var el = document.getElementById("visitCount");
+      if (el) el.innerHTML = "👀 本站已被 <b>" + n + "</b> 台不同设备浏览过";
+    }
     (function renderVisitCount() {
       var el = document.getElementById("visitCount");
       if (!el) return;
       /* 无头浏览器 / 自动化工具 / E2E 测试直接不计（爬虫、扫描器、咱们自己的测试都走这条） */
       if (navigator.webdriver || /Headless/i.test(navigator.userAgent) || /(^|[?&])e2e=1/.test(location.search)) { el.remove(); return; }
-      /* 页面脚本会随 pjax 重跑：同一份文档只初始化一次 */
-      if (window.__hjyVisitInit) return;
-      window.__hjyVisitInit = true;
+      /* 页面脚本会随 pjax 重跑：数值已经拿到过就直接填进新换上来的元素 */
+      if (window.__hjyVisitVal != null) { fillVisitCount(window.__hjyVisitVal); return; }
+      /* 计数流程只绑一次；手势 / 填数时都现查当前元素（pjax 换页后元素是新的） */
+      if (window.__hjyVisitBound) return;
+      window.__hjyVisitBound = true;
       var isNewDevice = !localStorage.getItem(VISIT_KEY);
+      var tries = 0;
       var doCount = async function () {
+        if (window.__hjyVisitVal != null) { fillVisitCount(window.__hjyVisitVal); return; }
         try {
           var action = isNewDevice ? "hit" : "get";
           var res = await fetch(COUNTER_BASE + "/" + action + "/" + COUNTER_NS + "/" + COUNTER_KEY);
           var data = await res.json();
           if (typeof data.value === "number") {
-            el.innerHTML = "👀 本站已被 <b>" + data.value + "</b> 台不同设备浏览过";
+            window.__hjyVisitVal = data.value;
+            fillVisitCount(data.value);
             if (isNewDevice) localStorage.setItem(VISIT_KEY, "1");
-          } else el.remove();
-        } catch (e) { el.remove(); }
+          }
+        } catch (e) {
+          /* 网络抽风不再删元素：退避重试，最多 3 次 */
+          if (++tries <= 3) setTimeout(doCount, 3000 * tries);
+        }
       };
       if (isNewDevice) {
         /* 新设备：等首次真实手势（点击/按键/触摸）再 +1，
