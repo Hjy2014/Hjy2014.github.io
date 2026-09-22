@@ -66,6 +66,23 @@
   <div class="rule"></div>
 
   <div class="card">
+    <div class="date"><b>2026-09-22</b><span class="badge">第 11 批 · 手机端音乐区：收藏/历史恢复原样 + 每日推荐收小修溢出</span></div>
+    <div class="sec">
+      <h2>🔄 调整（手机端）</h2>
+      <ul>
+        <li><b>「我的收藏 / 历史」恢复原来的样子</b>：各自占一整行；搜索栏保持输入框和「搜索」按钮同一行。</li>
+        <li><b>每日推荐两列整体收小</b>：卡片内边距、图标、字号缩小一档。</li>
+      </ul>
+    </div>
+    <div class="sec bug">
+      <h2>🐛 Bug 修复</h2>
+      <ul>
+        <li><b>长歌手名把每日推荐撑出屏幕</b>：两列 <code>1fr</code> 列宽不能小于内容宽度，长歌手名把整页撑到能横向滑（360px 机型实测被撑到 556px）。→ 改 <code>minmax(0, 1fr)</code> 强制等宽可收缩，超长歌手名省略号截断。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="date"><b>2026-09-22</b><span class="badge">第 10 批 · 修复：主页底部「浏览设备数」不见了</span></div>
     <div class="sec bug">
       <h2>🐛 Bug 修复</h2>
