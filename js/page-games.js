@@ -104,21 +104,90 @@
     }
 
     /* ---- 弹窗播放 ---- */
-    function openGame(g) {
-      var url = fileUrl(g);
-      modalTitle.textContent = g.n;
-      modal.classList.remove("min");
-      fullBtn.classList.remove("on");
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    /* 兜底源：jsDelivr CDN（国内可达性好）。注意 jsDelivr 不收 20MB 以上文件 */
+    function cdnUrl(g) {
+      if (g.s > 20480) return null;
+      var repo = g.h === 2 ? "Hjy2014/hjy-games-2" : g.h === 3 ? "Hjy2014/hjy-games-3" : "Hjy2014/Hjy2014.github.io";
+      var path = g.h === 2 || g.h === 3 ? "files/" : "games/files/";
+      return "https://cdn.jsdelivr.net/gh/" + repo + "@main/" + path + g.f;
+    }
+
+    var loadSeq = 0;   /* 打开新游戏 / 关闭弹窗时作废在途加载 */
+
+    function stageMsg(html) {
+      modalStage.innerHTML =
+        '<div style="width:482px;height:412px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f6f7fb;border-radius:14px;text-align:center;padding:0 24px;box-sizing:border-box">' + html + "</div>";
+    }
+
+    function embedPlayer(url) {
       modalStage.innerHTML =
         '<iframe src="https://turbowarp.org/embed?project_url=' + encodeURIComponent(url) +
         /* 不带全屏放行属性：TurboWarp 自带的方形全屏按钮就不会出现，只保留弹窗头部的圆形全屏键 */
         '&autoplay&settings-button" width="482" height="412" allowtransparency="true" frameborder="0" ' +
         'scrolling="no" style="color-scheme:auto" loading="lazy"></iframe>';
+    }
+
+    function openGame(g) {
+      var seq = ++loadSeq;
+      modalTitle.textContent = g.n;
+      modal.classList.remove("min");
+      fullBtn.classList.remove("on");
       modal.hidden = false;
       document.body.style.overflow = "hidden";
       prefetchAhead(g);
+
+      /* 先由本页面把游戏文件下载好（顺带预热缓存），哪条路通就用哪条，
+         避免 turbowarp.org 的 iframe 里 fetch 失败只显示「页面已崩溃」 */
+      var urls = [fileUrl(g)];
+      var cu = cdnUrl(g);
+      if (cu) urls.push(cu);
+      var tryIdx = 0;
+
+      stageMsg(
+        '<div style="width:36px;height:36px;border:4px solid #c7d2fe;border-top-color:#4f46e5;border-radius:50%;animation:gmspin .8s linear infinite"></div>' +
+        '<div style="color:#475569;font-size:.92rem">正在进入「' + esc(g.n) + "」…<br><span style=\"font-size:.78rem;color:#94a3b8\">第一次玩要下载游戏文件，稍等一下下</span></div>"
+      );
+
+      function attempt() {
+        if (seq !== loadSeq) return;   /* 已经关掉 / 换了别的游戏 */
+        if (tryIdx >= urls.length) {
+          stageMsg(
+            '<div style="font-size:2.2rem">📡</div>' +
+            '<div style="color:#334155;font-size:.95rem;line-height:1.8">游戏加载失败啦，多半是网络到 GitHub 间歇抽风。<br>点下面的按钮再试一次，多试几次一般就通了～</div>' +
+            '<button class="gm-retry" type="button" style="border:none;background:#4f46e5;color:#fff;padding:10px 26px;border-radius:999px;font-size:.92rem;cursor:pointer">🔄 重试</button>'
+          );
+          var rb = modalStage.querySelector(".gm-retry");
+          if (rb) rb.addEventListener("click", function () { tryIdx = 0; stageMsg('<div style="color:#64748b">正在重试…</div>'); attempt(); });
+          return;
+        }
+        var url = urls[tryIdx++];
+        var ctrl = typeof AbortController === "function" ? new AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 30000) : null;
+        fetch(url, { mode: "cors", credentials: "omit", cache: "force-cache", signal: ctrl ? ctrl.signal : undefined })
+          .then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.blob();
+          })
+          .then(function () {
+            if (seq !== loadSeq) return;
+            clearTimeout(timer);
+            embedPlayer(url);
+          })
+          .catch(function () {
+            if (seq !== loadSeq) return;
+            clearTimeout(timer);
+            attempt();
+          });
+      }
+      attempt();
     }
     function closeGame() {
+      loadSeq++;   /* 作废在途的加载，防止关掉后还往弹窗里塞播放器 */
       if (document.fullscreenElement) document.exitFullscreen();
       modal.hidden = true;
       modal.classList.remove("min");
