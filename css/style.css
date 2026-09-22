@@ -197,23 +197,9 @@ a { color: inherit; text-decoration: none; }
 .menu-admin { color: var(--primary); font-weight: 600; }
 .menu-logout { color: #dc2626; }
 .menu-log { color: #0f766e; }
-.menu-logins { color: #b45309; }
 
-/* 登录记录弹窗（站长专看） */
-.logins-card { max-width: 420px; max-height: 82vh; overflow: auto; }
-.logins-note { font-size: .8rem; color: #64748b; line-height: 1.7; margin: -8px 0 12px; }
-.logins-note b { color: #b45309; }
-.logins-list { list-style: none; margin: 0; padding: 0; }
-.logins-list li { display: flex; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 10px; font-size: .88rem; }
-.logins-list li:nth-child(odd) { background: #f8fafc; }
-.lg-when { color: #64748b; font-variant-numeric: tabular-nums; flex: none; font-size: .8rem; }
-.lg-user { font-weight: 700; color: #0f172a; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lg-dev { flex: none; font-size: .72rem; color: #475569; background: #e2e8f0; padding: 2px 9px; border-radius: 999px; }
-.lg-empty { justify-content: center; color: #94a3b8; }
-
-/* 登录弹窗（含登录记录弹窗，共用遮罩样式） */
-#loginModal,
-#loginsModal {
+/* 登录弹窗 */
+#loginModal {
   position: fixed; inset: 0; z-index: 200;
   background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(4px);
   display: flex; align-items: center; justify-content: center;
@@ -809,6 +795,7 @@ a { color: inherit; text-decoration: none; }
 .game-modal-full.on .ico-restore { display: block; }
 .game-modal-full.on { color: var(--primary); background: var(--primary-soft); }
 .game-modal-stage { display: flex; justify-content: center; }
+@keyframes gmspin { to { transform: rotate(360deg); } }
 .game-modal-stage iframe {
   width: 100% !important; max-width: 482px; aspect-ratio: 482 / 412; height: auto !important;
   border: 0; border-radius: 10px; background: #f1f5f9;
