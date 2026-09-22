@@ -66,6 +66,16 @@
   <div class="rule"></div>
 
   <div class="card">
+    <div class="date"><b>2026-09-22</b><span class="badge">第 10 批 · 修复：主页底部「浏览设备数」不见了</span></div>
+    <div class="sec bug">
+      <h2>🐛 Bug 修复</h2>
+      <ul>
+        <li><b>「👀 本站已被 N 台不同设备浏览过」时不时就没了</b>：计数接口失败一次元素就被删掉；且无刷新换页回主页后「只初始化一次」的守卫导致新元素永不回填。→ 重写：数值记在常驻层、换页回主页立刻回填；失败不删元素、退避重试最多 3 次；防刷逻辑不变。</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="date"><b>2026-09-22</b><span class="badge">第 9 批 · 修复：游戏全部提示「页面已崩溃」</span></div>
     <div class="sec bug">
       <h2>🐛 Bug 修复</h2>
