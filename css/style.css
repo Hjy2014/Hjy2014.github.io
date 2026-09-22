@@ -379,11 +379,19 @@ a { color: inherit; text-decoration: none; }
 .music-fav:hover { transform: scale(1.15); }
 
 @media (max-width: 640px) {
-  /* 手机端与电脑端一致：搜索按钮在输入框右侧；收藏/历史放不下时自动换到下一行 */
+  /* 搜索：输入框和「搜索」按钮同一行（保留上次的搜索栏改动） */
   .music-searchbar { flex-wrap: wrap; }
   .music-searchbar input { flex: 1 1 160px; }
-  /* 每日推荐两列（不再一列一个大卡片） */
-  .music-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* 「我的收藏 / 历史」恢复原来的样子：各自占一整行 */
+  .music-searchbar #favTab,
+  .music-searchbar #histTab { flex: 1 0 100%; }
+  /* 每日推荐：两列，整体收小一些；minmax(0,1fr) 防止长歌手名把列撑宽导致整页横向溢出 */
+  .music-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .music-card { padding: 10px; }
+  .music-name { font-size: 0.86rem; margin-top: 8px; }
+  .music-artist { font-size: 0.75rem; }
+  .music-play { width: 32px; height: 32px; right: 6px; bottom: 6px; font-size: 0.85rem; }
+  .music-fav { width: 28px; height: 28px; top: 14px; left: 14px; font-size: 0.85rem; }
   /* 历史记录「选择」键：圆形；进入选择模式后文字较长，自动恢复胶囊形 */
   #histSelect { flex: none; white-space: nowrap; }
   #histSelect.circle { width: 48px; height: 48px; padding: 0; border-radius: 50%; font-size: 0.85rem; }
