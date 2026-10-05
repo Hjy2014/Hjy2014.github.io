@@ -109,8 +109,8 @@
         return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
       });
     }
-    /* 兜底源：jsDelivr 全家桶（国内可达性好，四家镜像同一份数据）。
-       注意 jsDelivr 不收 20MB 以上文件，超大的只能走本站 GitHub 源 */
+    /* 兜底源：公共 CDN 四家镜像（国内可达性好，同一份数据）。
+       注意公共 CDN 不收 20MB 以上文件，超大的只能走本站源 */
     function cdnUrls(g) {
       if (g.s > 20480) return [];
       var repo = g.h === 2 ? "Hjy2014/hjy-games-2" : g.h === 3 ? "Hjy2014/hjy-games-3" : "Hjy2014/Hjy2014.github.io";
@@ -120,7 +120,7 @@
     }
 
     var loadSeq = 0;   /* 打开新游戏 / 关闭弹窗时作废在途加载 */
-    var curPlayer = null;   /* 当前 forkphorus 播放器实例 */
+    var curPlayer = null;   /* 当前播放器实例 */
 
     /* ---- 触屏虚拟键盘：手机 / 平板没有实体键盘，用它在屏幕上按键 ---- */
     var padWrap = null, padOn = false;
@@ -135,7 +135,7 @@
       { k: " ", t: "空格", c: "vp-space" }
     ];
     function vpSend(key, type) {
-      /* 键盘事件必须以画布为 target，forkphorus 才会触发「当按下某键」积木 */
+      /* 键盘事件必须以画布为 target，播放器才会触发「当按下某键」积木 */
       var canvas = curPlayer && curPlayer.stage && curPlayer.stage.canvas;
       if (!canvas) return;
       try { canvas.dispatchEvent(new KeyboardEvent(type, { key: key, bubbles: true, cancelable: true })); } catch (e) {}
@@ -202,13 +202,13 @@
       setPad(false);   /* 跨源 iframe 派发不了键盘事件，虚拟键盘只在同源播放器里可用 */
       modalStage.innerHTML =
         '<iframe src="https://turbowarp.org/embed?project_url=' + encodeURIComponent(url) +
-        /* 不带全屏放行属性：TurboWarp 自带的方形全屏按钮就不会出现，只保留弹窗头部的圆形全屏键 */
+        /* 不带全屏放行属性：播放器自带的方形全屏按钮就不会出现，只保留弹窗头部的圆形全屏键 */
         '&autoplay&settings-button" width="482" height="412" allowtransparency="true" frameborder="0" ' +
         'scrolling="no" style="color-scheme:auto" loading="lazy"></iframe>';
     }
 
-    /* ---- 同源 forkphorus 播放器：文件在本页下载后直接喂给播放器，
-            能吃到 Service Worker 的 Cache API 缓存（跨源 iframe 的 turbowarp
+    /* ---- 同源播放器：文件在本页下载后直接喂给播放器，
+            能吃到 Service Worker 的 Cache API 缓存（跨源 iframe
             因浏览器网络分区吃不到我们的缓存，每次都要完整重新下载）---- */
     var FP_BASE = "js/lib/forkphorus/";
     var fpCssDone = false, fpLoading = null;
@@ -285,7 +285,7 @@
           host.appendChild(player.root);
           blob.arrayBuffer().then(function (buf) {
             if (seq !== loadSeq || settled) return;
-            /* .sb 老格式本播放器不带转换器，会走 onerror 自动回退 TurboWarp */
+            /* .sb 老格式本播放器不带转换器，会走 onerror 自动回退到备用播放器 */
             player.loadProjectFromBuffer(buf, ext === "sb3" ? "sb3" : "sb2");
           }).catch(function (err) {
             if (!settled) { settled = true; try { player.cleanup(); } catch (e) {} reject(err); }
@@ -304,7 +304,7 @@
       prefetchAhead(g);
 
       /* 先由本页面把游戏文件下载好（顺带预热缓存），哪条路通就用哪条，
-         避免 turbowarp.org 的 iframe 里 fetch 失败只显示「页面已崩溃」 */
+         避免播放器 iframe 里 fetch 失败只显示「页面已崩溃」 */
       var urls = [fileUrl(g)].concat(cdnUrls(g));
       var tryIdx = 0;
 
@@ -338,7 +338,7 @@
           .then(function (blob) {
             if (seq !== loadSeq) return;
             clearTimeout(timer);
-            /* 优先同源 forkphorus（走缓存、秒开）；失败自动回退 TurboWarp iframe */
+            /* 优先同源播放器（走缓存、秒开）；失败自动回退到备用播放器 */
             embedPhosphorus(blob, (g.f.split(".").pop() || "").toLowerCase(), seq)
               .catch(function () { if (seq === loadSeq) embedPlayer(url); });
           })

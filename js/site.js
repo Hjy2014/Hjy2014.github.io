@@ -13,6 +13,14 @@
    ============================================================ */
 (function () {
   "use strict";
+
+  /* Service Worker：Scratch 游戏文件永久缓存（失败静默，不影响站点） */
+  try {
+    if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    }
+  } catch (e) {}
+
   if (window.HJYNav) return;
 
   var pages = {};           /* 页面名 → 初始化函数 */
@@ -22,10 +30,16 @@
   var cleanup = null;       /* 当前页面初始化函数注册的清理器 */
   var pageRoot = null;
   var pfRoot = null;
+  var pageUrl = null;       /* 当前页面的地址（换页瞬间 location 还停在上一页） */
 
   function currentKey() {
     return (document.body && document.body.dataset && document.body.dataset.page) || "";
   }
+
+  /* 当前页面的完整地址。换页时 pushState 是在 swap 之后才做的，此刻
+     location.search/location.href 都还是上一页的；页面脚本要读 ?e2e 这类
+     参数就得用这个（第127批） */
+  function url() { return pageUrl || location.href; }
 
   /* ---------- 首次装配：内容区 / 常驻区 分区 ---------- */
   function boot() {
@@ -93,25 +107,60 @@
 
     /* 换内容（播放器在 #pfRoot 里，不参与替换） */
     pageRoot.innerHTML = nb.innerHTML;
+    try { pageUrl = new URL(url, location.href).href; } catch (e) { pageUrl = location.href; }
     document.body.dataset.page = key;
     /* 万一播放器被包进了内容区（脚本顺序差异），搬回常驻区 */
     Array.prototype.slice.call(pageRoot.querySelectorAll("[data-persist]")).forEach(function (n) {
       pfRoot.appendChild(n);
     });
 
-    /* 重跑目标页脚本：innerHTML 塞进去的 <script> 不会执行，得重建 */
+    /* 重跑目标页脚本：innerHTML 塞进去的 <script> 不会执行，得重建。
+       ⚠️ 必须「按顺序串行」重建 —— 浏览器不保证动态插入的脚本按插入序执行：
+       实测（Edge，2026-10-05）600KB 的 three-r128.min.js 还在解析时，后面的
+       game-runner.js 就先跑了，于是 window.THREE 为空、WebGL 渲染器根本没建，
+       跑酷进去只有 HUD、3D 画面全黑。所以这里改成前一个 load/error 才放下一个。
+       为了不拖慢换页，同源脚本先并行预取（命中缓存后串行几乎零等待）。 */
     pendingKey = key;
-    Array.prototype.slice.call(pageRoot.querySelectorAll("script")).forEach(function (old) {
+    var olds = Array.prototype.slice.call(pageRoot.querySelectorAll("script"));
+    olds.forEach(function (o) {                       /* ① 并行预取（只同源） */
+      var src = o.getAttribute("src");
+      if (!src) return;
+      var u;
+      try { u = new URL(src, location.href); } catch (e) { return; }
+      if (u.origin !== location.origin) return;       /* 跨域脚本（giscus 等）不预取 */
+      try { fetch(u.href).catch(function () {}); } catch (e) {}
+    });
+    (function chain(i) {                              /* ② 串行重建 & 执行 */
+      if (i >= olds.length) {
+        if (pendingKey) {         /* 该页没有脚本注册，用已注册的直接跑 */
+          var k = pendingKey;
+          pendingKey = null;
+          runInit(k);
+        }
+        return;
+      }
+      var old = olds[i];
+      if (!old.parentNode) { chain(i + 1); return; }
       var s = document.createElement("script");
       Array.prototype.slice.call(old.attributes).forEach(function (a) { s.setAttribute(a.name, a.value); });
-      if (!old.src) s.textContent = old.textContent;
+      if (!old.getAttribute("src")) {                 /* 内联脚本：立刻继续 */
+        s.textContent = old.textContent;
+        old.parentNode.replaceChild(s, old);
+        chain(i + 1);
+        return;
+      }
+      var done = false, tm = null;
+      var next = function () {
+        if (done) return;
+        done = true;
+        if (tm) clearTimeout(tm);
+        chain(i + 1);
+      };
+      s.addEventListener("load", next);
+      s.addEventListener("error", next);
+      tm = setTimeout(next, 8000);                    /* 兜底：外链卡死不能锁整页 */
       old.parentNode.replaceChild(s, old);
-    });
-    if (pendingKey) {          /* 该页没有脚本注册，用已注册的直接跑 */
-      var k = pendingKey;
-      pendingKey = null;
-      runInit(k);
-    }
+    })(0);
     if (window.HJYNav.onSwap) { try { window.HJYNav.onSwap(key); } catch (e) { /* 忽略 */ } }
     if (!(opts && opts.keepScroll)) window.scrollTo(0, 0);
   }
@@ -175,6 +224,7 @@
 
   window.HJYNav = {
     register: register,
+    url: url,
     go: function (url) { navigate(url); },
     reload: function () { navigate(location.pathname + location.search); },
     currentPage: currentKey,

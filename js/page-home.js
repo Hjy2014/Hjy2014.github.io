@@ -332,8 +332,10 @@
       { id: 2250011882, name: "抖音热歌" },
       { id: 3778678, name: "热歌榜" },
     ];
+    /* 每日推荐 = 三个榜单串成一个接力池：主榜翻完自动接下一个榜，绕一圈回来，
+       可翻批次比单榜多 3 倍，不会刚换两三批就到头 */
+    var dailyChartIdx = 0;
     var dailyChart = DAILY_CHARTS[0];
-    var dailyChartLen = PAGE_SIZE * 3;
     var chartCache = {};
 
     function dayKey() {
@@ -406,7 +408,7 @@
       if (musicView !== "home") loadHint.hidden = true;
       musicPager.hidden = musicView !== "search";
       if (musicView === "home") {
-        musicCaption.textContent = "🔥 今日推荐";
+        musicCaption.textContent = "🔥 今日推荐 · " + dailyChart.name;
       } else if (musicView === "search") {
         musicCaption.textContent = '🔍 “' + searchKw + "” 的搜索结果";
         var entry = searchCache[searchKw] && searchCache[searchKw][searchPage];
@@ -444,7 +446,7 @@
           day: dayKey(),
           chart: chartCache,
           pf: dailyPrefetch,
-          daily: { list: dailyList, off: dailyOffset, len: dailyChartLen },
+          daily: { list: dailyList, off: dailyOffset, idx: dailyChartIdx },
           view: musicView, lastView: lastView,
           kw: searchKw, page: searchPage, cache: searchCache,
           favPlayable: favChecked ? favPlayable : null,
@@ -493,45 +495,58 @@
       return list;
     }
 
-    /* 后台预取：当前批还在看/听时，提前把后面两批拉好并过滤好 */
+    /* 后台预取：当前批还在看/听时，提前把后面两批拉好并过滤好（跨榜单接力） */
     var dailyPrefetch = {};
     var prefetchChain = Promise.resolve();
-    function schedulePrefetch(offset) {
-      var total = Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE;
-      if (!total) return;
-      for (var k = 1; k <= 2; k++) {
-        (function (off) {
-          if (dailyPrefetch[off] !== undefined) return;
-          dailyPrefetch[off] = null;
+    function pfKey(idx, off) { return idx + "_" + off; }
+    /* 下一批坐标：本榜翻完就跳下一个榜，最后一个榜翻完绕回第一个 */
+    async function nextPos(idx, off) {
+      var list = await fetchChart(DAILY_CHARTS[idx].id);   /* 有缓存时几乎零开销 */
+      var total = Math.ceil(list.length / PAGE_SIZE) * PAGE_SIZE;
+      var no = off + PAGE_SIZE;
+      if (no >= total) return { idx: (idx + 1) % DAILY_CHARTS.length, off: 0 };
+      return { idx: idx, off: no };
+    }
+    function schedulePrefetch(idx, offset) {
+      for (var k = 0; k < 2; k++) {
+        (function (k) {
           prefetchChain = prefetchChain.then(async function () {
+            var pos = { idx: idx, off: offset };
             try {
-              var chart = await fetchChart(dailyChart.id);
-              dailyChartLen = chart.length;
-              var raw = chart.slice(off, off + PAGE_SIZE);
-              if (!raw.length) { delete dailyPrefetch[off]; return; }
+              for (var j = 0; j <= k; j++) pos = await nextPos(pos.idx, pos.off);
+              var key = pfKey(pos.idx, pos.off);
+              if (dailyPrefetch[key] !== undefined) return;
+              dailyPrefetch[key] = null;
+              var raw = (await fetchChart(DAILY_CHARTS[pos.idx].id)).slice(pos.off, pos.off + PAGE_SIZE);
+              if (!raw.length) { delete dailyPrefetch[key]; return; }
               var r = await filterPlayable(raw);
-              dailyPrefetch[off] = r.list;
+              dailyPrefetch[key] = r.list;
               r.list.forEach(function (t) { HJY.prefetchLyrics(t.id); });
-            } catch (e) { delete dailyPrefetch[off]; }
+            } catch (e) {
+              /* 预取失败把占位删掉，等真正翻页时重试 */
+              var key2 = pfKey(pos.idx, pos.off);
+              if (dailyPrefetch[key2] === null) delete dailyPrefetch[key2];
+            }
           });
-        })((offset + k * PAGE_SIZE) % total);
+        })(k);
       }
     }
 
-    async function loadDaily(offset) {
+    async function loadDaily(idx, offset) {
+      dailyChartIdx = idx;
+      dailyChart = DAILY_CHARTS[idx];
       dailyOffset = offset;
-      var instant = Array.isArray(dailyPrefetch[offset]);
+      var instant = Array.isArray(dailyPrefetch[pfKey(idx, offset)]);
       if (musicView === "home" && !instant) {
         musicStatus.textContent = "正在获取网易云" + dailyChart.name + "…";
         musicGrid.innerHTML = "";
       }
       try {
         var chart = await fetchChart(dailyChart.id);
-        dailyChartLen = chart.length;
         var raw = chart.slice(offset, offset + PAGE_SIZE);
         var r;
         if (instant) {
-          r = { list: dailyPrefetch[offset], checked: true };
+          r = { list: dailyPrefetch[pfKey(idx, offset)], checked: true };
         } else {
           dailyList = raw;
           if (musicView === "home") { renderMusic(); loadHint.hidden = true; musicStatus.textContent = "正在过滤无版权歌曲…"; }
@@ -545,10 +560,10 @@
         }
         if (r.checked && r.list.length) { /* 只缓存确认过滤过、且确实有可播歌曲的列表，别让网络波动把今日缓存写空 */
           try {
-            localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 4, day: dayKey(), off: offset, list: dailyList }));
+            localStorage.setItem(DAILY_CACHE_KEY, JSON.stringify({ v: 5, day: dayKey(), idx: idx, off: offset, list: dailyList }));
           } catch (e) { /* 忽略 */ }
         }
-        schedulePrefetch(offset);
+        schedulePrefetch(idx, offset);
         return true;
       } catch (e) {
         if (musicView === "home") {
@@ -694,9 +709,9 @@
         if (musicView === "home") musicStatus.textContent = "后面几批暂时没有能播的歌，点「换一批」试试吧～";
         return false;   /* 告诉播放器：这一轮就此停下 */
       }
-      var nextOff = (dailyOffset + PAGE_SIZE) % (Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE);
+      var pos = await nextPos(dailyChartIdx, dailyOffset);
       if (musicView === "home") musicStatus.textContent = "本批播完，自动换下一批…";
-      var ok = await loadDaily(nextOff);
+      var ok = await loadDaily(pos.idx, pos.off);
       if (!ok) {
         if (musicView === "home") musicStatus.textContent = "网络开小差了，连播暂停，点「换一批」继续～";
         return false;
@@ -759,7 +774,11 @@
     pageNext.addEventListener("click", function () { gotoSearchPage(searchPage + 1); });
     dailyRefresh.addEventListener("click", function () {
       loadHint.hidden = false;
-      loadDaily((dailyOffset + PAGE_SIZE) % (Math.ceil(dailyChartLen / PAGE_SIZE) * PAGE_SIZE));
+      nextPos(dailyChartIdx, dailyOffset).then(function (p) {
+        loadDaily(p.idx, p.off);
+      }, function () {
+        loadDaily(dailyChartIdx, dailyOffset);   /* 算不出下一批（网络抖动）就重试本批，loadDaily 会给出失败提示 */
+      });
     });
 
     /* ---- 视图切换 ---- */
@@ -846,14 +865,14 @@
 
     /* ---- 初始化：按日期轮换榜单；有今日缓存就直接用 ---- */
     (function initDaily() {
-      dailyChart = DAILY_CHARTS[dayKey() % DAILY_CHARTS.length];
+      dailyChartIdx = dayKey() % DAILY_CHARTS.length;
       if (memo) {
         chartCache = memo.chart || {};
         dailyPrefetch = memo.pf || {};
         if (memo.daily) {
           dailyList = memo.daily.list || [];
           dailyOffset = memo.daily.off || 0;
-          if (memo.daily.len) dailyChartLen = memo.daily.len;
+          if (typeof memo.daily.idx === "number") dailyChartIdx = memo.daily.idx % DAILY_CHARTS.length;
         }
         searchCache = memo.cache || {};
         searchKw = memo.kw || "";
@@ -862,23 +881,27 @@
         if (memo.view) musicView = memo.view;
         if (memo.favPlayable) { favPlayable = memo.favPlayable; favChecked = true; }
         if (dailyList.length || musicView !== "home") {
+          dailyChart = DAILY_CHARTS[dailyChartIdx];
           renderMusic();
-          if (musicView === "home") { loadHint.hidden = true; schedulePrefetch(dailyOffset); }
+          if (musicView === "home") { loadHint.hidden = true; schedulePrefetch(dailyChartIdx, dailyOffset); }
           return;                       /* 回主页是「回到刚才」，不重新拉资料 */
         }
       }
       try {
         var c = JSON.parse(localStorage.getItem(DAILY_CACHE_KEY));
-        if (c && c.v === 4 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
+        if (c && c.v === 5 && c.day === dayKey() && Array.isArray(c.list) && c.list.length) {
+          if (typeof c.idx === "number") dailyChartIdx = c.idx % DAILY_CHARTS.length;
+          dailyChart = DAILY_CHARTS[dailyChartIdx];
           dailyList = c.list;
           dailyOffset = c.off || 0;
           renderMusic();
           syncCards();
-          schedulePrefetch(dailyOffset);
+          schedulePrefetch(dailyChartIdx, dailyOffset);
           return;
         }
       } catch (e) { /* 缓存坏了就走网络 */ }
-      loadDaily(0);
+      dailyChart = DAILY_CHARTS[dailyChartIdx];
+      loadDaily(dailyChartIdx, 0);
     })();
   }
 

@@ -135,7 +135,12 @@ a { color: inherit; text-decoration: none; }
 .skill-card p { color: var(--text-muted); font-size: 0.88rem; }
 
 /* ============ 作品 ============ */
-.projects-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.projects-grid {
+  display: grid; gap: 24px;
+  /* 第143批：卡片数量会变（两款游戏暂隐），用 auto-fit 让可见卡片自动居中排布 */
+  grid-template-columns: repeat(auto-fit, minmax(0, 360px));
+  justify-content: center;
+}
 .project-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
@@ -486,7 +491,13 @@ a { color: inherit; text-decoration: none; }
   color: var(--primary); font-size: 0.72rem; opacity: 0.85;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.pf-controls { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.pf-controls { display: flex; align-items: center; justify-content: center; gap: 18px; position: relative; }
+/* 悬浮窗左右两端的音量 / 倍速键（弹层复用详情页的 np-volpop / np-ratepop 样式） */
+.pl-volwrap { position: absolute; left: 0; }
+.pl-ratewrap { position: absolute; right: 0; }
+.pl-rate { font-size: 0.78rem !important; font-weight: 700; }
+.pl-rate.active { border-color: var(--primary, #2563eb); color: var(--primary, #2563eb); background: var(--primary-soft, #eef2ff); }
+.np-ratepop.pl-ratepop { left: 50%; right: auto; transform: translateX(-50%); }
 .pl-btn {
   width: 38px; height: 38px; border-radius: 50%; border: none;
   background: none; font-size: 1.05rem; cursor: pointer;
@@ -545,6 +556,7 @@ a { color: inherit; text-decoration: none; }
 .contact-desc { color: var(--text-muted); margin-bottom: 32px; }
 .contact-links { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
 .gh-icon { width: 1.15em; height: 1.15em; margin-right: 8px; vertical-align: -0.18em; }
+
 .visit-count {
   margin-top: 28px; text-align: center;
   color: var(--text-muted, #64748b); font-size: 0.95rem;

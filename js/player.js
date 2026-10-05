@@ -127,7 +127,7 @@
     }
   }
 
-  /* 播放地址会过期，每次播放前实时解析：GDStudio 直连 → 网易云接口 → Meting */
+  /* 播放地址会过期，每次播放前实时解析：直连通道 → 备用接口 → 镜像通道 */
   async function resolveUrl(id) {
     try {
       var r = await fetchTimeout("https://music-api.gdstudio.xyz/api.php?types=url&source=netease&id=" + id + "&br=320000", 8000);
@@ -315,10 +315,24 @@
     '    <span class="pl-time" id="plDur">0:00</span>',
     '  </div>',
     '  <div class="pf-controls">',
+    '    <div class="pl-volwrap">',
+    '      <button class="pl-btn" id="plVol" aria-label="音量" title="音量">🔊</button>',
+    '      <div class="np-volpop" id="plVolPop" hidden>',
+    '        <input type="range" id="plVolBar" min="0" max="100" value="100" aria-label="音量大小" />',
+    "      </div>",
+    "    </div>",
     '    <button class="pl-btn" id="plPrev" aria-label="上一首">⏮</button>',
     '    <button class="pl-btn pl-toggle" id="plToggle" aria-label="播放/暂停">▶</button>',
     '    <button class="pl-btn" id="plNext" aria-label="下一首">⏭</button>',
     '    <button class="pl-fav" id="plFav" aria-label="收藏">🤍</button>',
+    '    <div class="pl-ratewrap">',
+    '      <button class="pl-btn pl-rate" id="plRate" aria-label="倍速播放" title="倍速播放">1x</button>',
+    '      <div class="np-ratepop pl-ratepop" id="plRatePop" hidden>',
+    '        <button data-rate="0.5">0.5x</button>',
+    '        <button data-rate="1">1x</button>',
+    '        <button data-rate="2">2x</button>',
+    "      </div>",
+    "    </div>",
     '  </div>',
     '  <div class="pf-resize" id="pfResize" aria-label="调整大小" title="拖动调整大小"></div>',
     "</div>",
@@ -395,6 +409,11 @@
   var plCur = document.getElementById("plCur");
   var plDur = document.getElementById("plDur");
   var plFav = document.getElementById("plFav");
+  var plVol = document.getElementById("plVol");
+  var plVolPop = document.getElementById("plVolPop");
+  var plVolBar = document.getElementById("plVolBar");
+  var plRate = document.getElementById("plRate");
+  var plRatePop = document.getElementById("plRatePop");
   var plMin = document.getElementById("plMin");
   var plClose = document.getElementById("plClose");
   var plMax = document.getElementById("plMax");
@@ -600,14 +619,22 @@
   }
   var dragState = null;
   playerBar.addEventListener("pointerdown", function (e) {
-    if (e.target.closest("button, input, .pf-resize")) return;
-    var rect = playerBar.getBoundingClientRect();
-    dragState = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
-    playerBar.setPointerCapture(e.pointerId);
+    if (e.target.closest("button, input, .pf-resize, .np-volpop, .np-ratepop")) return;
+    /* 别急着劫持：先记起点，挪动超阈值才算拖——
+       否则 setPointerCapture 会把 click 重定向到悬浮窗，歌手名/歌名的点击就废了 */
+    dragState = { sx: e.clientX, sy: e.clientY, dx: 0, dy: 0, id: e.pointerId, moved: false };
     e.preventDefault();
   });
   playerBar.addEventListener("pointermove", function (e) {
-    if (!dragState) return;
+    if (!dragState || e.pointerId !== dragState.id) return;
+    if (!dragState.moved) {
+      if (Math.abs(e.clientX - dragState.sx) < 4 && Math.abs(e.clientY - dragState.sy) < 4) return;
+      var rect0 = playerBar.getBoundingClientRect();
+      dragState.dx = dragState.sx - rect0.left;
+      dragState.dy = dragState.sy - rect0.top;
+      dragState.moved = true;
+      playerBar.setPointerCapture(e.pointerId);
+    }
     playerBar.style.left = (e.clientX - dragState.dx) + "px";
     playerBar.style.top = (e.clientY - dragState.dy) + "px";
     clampPlayer();
@@ -624,9 +651,27 @@
   playerBar.addEventListener("pointerup", endDrag);
   playerBar.addEventListener("pointercancel", endDrag);
   playerBar.addEventListener("dblclick", function (e) {
-    if (e.target.closest("button, input, .pf-resize")) return;
+    if (e.target.closest("button, input, .pf-resize, .np-volpop, .np-ratepop")) return;
     openNowPlaying(); /* 双击空白处 = 打开播放详情页 */
   });
+
+  /* 手机端专属：双击悬浮窗 = 最大化（详情页）。电脑端没有这个手势，用上面的双击即可 */
+  var IS_TOUCH = window.matchMedia && window.matchMedia("(pointer: coarse)").matches || "ontouchstart" in window;
+  if (IS_TOUCH) {
+    var lastTapT = 0, lastTapX = 0, lastTapY = 0;
+    playerBar.addEventListener("touchend", function (e) {
+      if (e.target.closest("button, input, .pf-resize, .pl-artist, .np-volpop, .np-ratepop")) return;
+      var t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      var now = Date.now();
+      if (now - lastTapT < 320 && Math.abs(t.clientX - lastTapX) < 44 && Math.abs(t.clientY - lastTapY) < 44) {
+        lastTapT = 0;
+        openNowPlaying();
+      } else {
+        lastTapT = now; lastTapX = t.clientX; lastTapY = t.clientY;
+      }
+    }, { passive: true });
+  }
 
   var resizeState = null;
   pfResize.addEventListener("pointerdown", function (e) {
@@ -657,6 +702,8 @@
     musicAudio.volume = Math.max(0, Math.min(1, v));
     npVolBar.value = Math.round(musicAudio.volume * 100);
     npVol.textContent = musicAudio.volume > 0 ? "🔊" : "🔇";
+    plVolBar.value = npVolBar.value;          /* 悬浮窗音量键与详情页同步 */
+    plVol.textContent = npVol.textContent;
     try { localStorage.setItem("hjy_volume", String(musicAudio.volume)); } catch (e) { /* 忽略 */ }
   }
   try {
@@ -665,6 +712,8 @@
   } catch (e) { /* 默认 1 */ }
   npVolBar.value = Math.round(musicAudio.volume * 100);
   npVol.textContent = musicAudio.volume > 0 ? "🔊" : "🔇";
+  plVolBar.value = npVolBar.value;
+  plVol.textContent = npVol.textContent;
 
   var volTapT = 0, volMuteBefore = 0.8, volTapTimer = 0;
   npVol.addEventListener("pointerup", function (e) {
@@ -678,7 +727,7 @@
       return;
     }
     volTapT = now;
-    volTapTimer = setTimeout(function () { npVolPop.hidden = !npVolPop.hidden; }, 290);
+    volTapTimer = setTimeout(function () { npVolPop.hidden = !npVolPop.hidden; plVolPop.hidden = true; plRatePop.hidden = true; }, 290);
   });
   npVolBar.addEventListener("input", function () { applyVolume(+npVolBar.value / 100); });
   document.addEventListener("click", function (e) {
@@ -694,6 +743,11 @@
     npRatePop.querySelectorAll("button").forEach(function (b) {
       b.classList.toggle("on", parseFloat(b.dataset.rate) === r);
     });
+    plRate.textContent = npRate.textContent;          /* 悬浮窗倍速键与详情页同步 */
+    plRate.classList.toggle("active", r !== 1);
+    plRatePop.querySelectorAll("button").forEach(function (b) {
+      b.classList.toggle("on", parseFloat(b.dataset.rate) === r);
+    });
   }
   try {
     var sr = parseFloat(localStorage.getItem("hjy_rate"));
@@ -704,6 +758,8 @@
     e.stopPropagation();
     npRatePop.hidden = !npRatePop.hidden;
     npVolPop.hidden = true;
+    plVolPop.hidden = true;
+    plRatePop.hidden = true;
   });
   npRatePop.addEventListener("click", function (e) {
     var b = e.target.closest("button[data-rate]");
@@ -713,6 +769,40 @@
   });
   document.addEventListener("click", function (e) {
     if (!npRatePop.hidden && !e.target.closest(".np-ratewrap")) npRatePop.hidden = true;
+  });
+
+  /* 悬浮窗音量键：与详情页同款——点一下弹出竖向滑条，双击静音/恢复 */
+  var pVolTapT = 0, pVolMuteBefore = 0.8, pVolTapTimer = 0;
+  plVol.addEventListener("pointerup", function (e) {
+    e.stopPropagation();
+    var now = Date.now();
+    if (now - pVolTapT < 280) {
+      pVolTapT = 0;
+      clearTimeout(pVolTapTimer);
+      if (musicAudio.volume > 0) { pVolMuteBefore = musicAudio.volume; applyVolume(0); }
+      else applyVolume(pVolMuteBefore || 0.8);
+      return;
+    }
+    pVolTapT = now;
+    pVolTapTimer = setTimeout(function () { plVolPop.hidden = !plVolPop.hidden; npVolPop.hidden = true; plRatePop.hidden = true; npRatePop.hidden = true; }, 290);
+  });
+  plVolBar.addEventListener("input", function () { applyVolume(+plVolBar.value / 100); });
+  plRate.addEventListener("click", function (e) {
+    e.stopPropagation();
+    plRatePop.hidden = !plRatePop.hidden;
+    plVolPop.hidden = true;
+    npVolPop.hidden = true;
+    npRatePop.hidden = true;
+  });
+  plRatePop.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-rate]");
+    if (!b) return;
+    applyRate(parseFloat(b.dataset.rate));
+    plRatePop.hidden = true;
+  });
+  document.addEventListener("click", function (e) {
+    if (!plVolPop.hidden && !e.target.closest(".pl-volwrap")) plVolPop.hidden = true;
+    if (!plRatePop.hidden && !e.target.closest(".pl-ratewrap")) plRatePop.hidden = true;
   });
 
   /* ================= 界面同步 ================= */
@@ -938,6 +1028,8 @@
     npMask.hidden = true;
     npVolPop.hidden = true;
     npRatePop.hidden = true;
+    plVolPop.hidden = true;
+    plRatePop.hidden = true;
   }
   npClose.addEventListener("click", closeNowPlaying);
   npLyrics.addEventListener("click", function (e) {
@@ -1012,7 +1104,7 @@
     return parts.join("\n\n");
   }
 
-  /* 没有歌手 id 时（例如 GDStudio 通道的结果）按名字反查一次 */
+  /* 没有歌手 id 时（例如备用通道的结果）按名字反查一次 */
   async function resolveArtistId(name) {
     if (!name) return null;
     var d = await neteaseGet("/cloudsearch/pc?s=" + encodeURIComponent(name) + "&type=100&limit=1&offset=0");
@@ -1147,7 +1239,8 @@
     queueSource = st.source || "";
     var t = queue[queueIdx];
     if (!t) return;
-    if (!playerPlaced) { applyPlayerScale(); placePlayer(); }
+    /* 注意：不能在 showPlayer 之前 placePlayer——窗口还 hidden 时量到 0×0，
+       会把悬浮窗摆到视口外角上（手机端直接看不到播放器）。showPlayer 里会摆。 */
     showPlayer(t);
     plArtist.textContent = t.artist || "";
     plDur.textContent = fmt((t.dt || 0) / 1000);
