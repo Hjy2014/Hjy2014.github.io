@@ -11,6 +11,30 @@
   function init(signal) {
     var HJY = window.HJY;
 
+    /* ================= 作品卡按环境切换（第148批） =================
+       一份 index.html 两端各自合适：
+       · 线上（hjy2014.github.io 等）→ 显示两张占位卡（像素小游戏合集 / 极简 Markdown 编辑器），
+         隐藏两张游戏卡（HTML 里默认就是这个状态，此处不用动）；
+       · 本地静态服务器（127.0.0.1 / localhost，如 8018）→ 显示两张游戏卡（可点进游戏），占位卡隐藏。
+       URL 带 ?env=dev / ?env=prod 可强制指定（E2E 与排查用），否则按 hostname 判断。 */
+    (function () {
+      var env = "";
+      try {
+        var q = new URLSearchParams(location.search).get("env");
+        if (q === "dev" || q === "prod") env = q;
+      } catch (e) { /* 老浏览器没有 URLSearchParams 就按 hostname 走 */ }
+      if (!env) {
+        var h = location.hostname;
+        env = (h === "127.0.0.1" || h === "localhost") ? "dev" : "prod";
+      }
+      var cards = document.querySelectorAll("#projects .project-card[data-env]");
+      for (var i = 0; i < cards.length; i++) {
+        var c = cards[i];
+        if (c.getAttribute("data-env") === env) c.removeAttribute("hidden");
+        else c.setAttribute("hidden", "");
+      }
+    })();
+
     /* ================= 作品集部分 ================= */
     /* 打字机效果 */
     var roles = ["在校学生", "编程爱好者", "创意编程玩家"];
