@@ -135,12 +135,9 @@ a { color: inherit; text-decoration: none; }
 .skill-card p { color: var(--text-muted); font-size: 0.88rem; }
 
 /* ============ 作品 ============ */
-.projects-grid {
-  display: grid; gap: 24px;
-  /* 第143批：卡片数量会变（两款游戏暂隐），用 auto-fit 让可见卡片自动居中排布 */
-  grid-template-columns: repeat(auto-fit, minmax(0, 360px));
-  justify-content: center;
-}
+/* 第146批：三张卡都回来了，网格恢复成原先的「三张一排」（第143批为单卡居中的 auto-fit 已不需要）。
+   ≤900px 由响应式媒体查询降为单列，与原先一致。 */
+.projects-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .project-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden; transition: transform 0.25s, box-shadow 0.25s;
